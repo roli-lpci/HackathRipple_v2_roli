@@ -125,7 +125,29 @@ Steering parameters (0-1 scale):
 - Speed vs Quality (Y): ${agent.steeringY.toFixed(2)} (${agent.steeringY < 0.3 ? 'prioritize speed' : agent.steeringY > 0.7 ? 'prioritize thoroughness' : 'balanced'})
 `;
 
-  const prompt = `You are an AI agent named "${agent.name}" with the following description: ${agent.description}
+  // Special handling for coordinator agent
+  const isCoordinator = agent.id === 'coordinator-agent';
+  
+  const prompt = isCoordinator 
+    ? `You are the Coordinator, a helpful assistant managing the agent system.
+
+User question: ${context}
+
+Your role is to:
+- Answer questions about the agents, artifacts, and mission progress
+- Explain what artifacts can be used for
+- Guide users on how to interact with the system
+- Be conversational and helpful
+
+Respond with valid JSON:
+{
+  "action": "complete",
+  "message": "Your helpful response to the user",
+  "reason": "Answering user question"
+}
+
+Be concise and friendly.`
+    : `You are an AI agent named "${agent.name}" with the following description: ${agent.description}
 
 Your current task:
 Goal: ${task.goal}
