@@ -241,6 +241,9 @@ export async function registerRoutes(
         steeringX: 0.7,
         steeringY: 0.5,
         tools: [],
+        enabledTools: [],
+        tokenCount: 0,
+        costSpent: 0,
       };
       missionState.agents.set(coordinatorAgent.id, coordinatorAgent);
     }
@@ -354,6 +357,25 @@ export async function registerRoutes(
             agent.steeringX = steeringX;
             agent.steeringY = steeringY;
             broadcast(wss, 'agent_update', agent);
+          }
+        } else if (message.type === 'tool_toggle') {
+          const { agentId, tool, enabled } = message.payload;
+          const agent = missionState.agents.get(agentId);
+          if (agent) {
+            if (enabled) {
+              if (!agent.enabledTools.includes(tool)) {
+                agent.enabledTools.push(tool);
+              }
+            } else {
+              agent.enabledTools = agent.enabledTools.filter(t => t !== tool);
+            }
+            broadcast(wss, 'agent_update', agent);
+            addLog(wss, {
+              agentId: agent.id,
+              agentName: agent.name,
+              type: 'action',
+              data: { action: 'tool_toggle', tool, enabled },
+            });
           }
         } else if (message.type === 'reset') {
           missionState.agents.clear();

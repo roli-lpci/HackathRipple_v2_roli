@@ -24,7 +24,7 @@ export function MainLayout() {
     clearExecutionLogs,
   } = useAgentStore();
 
-  const { sendGodMode, sendChat, updateSteering } = useWebSocket();
+  const { sendGodMode, sendChat, updateSteering, toggleTool } = useWebSocket();
 
   const [isLoading, setIsLoading] = useState(false);
   const [isCanvasExpanded, setIsCanvasExpanded] = useState(false);
@@ -46,6 +46,16 @@ export function MainLayout() {
     if (selectedAgentId) {
       updateAgent(selectedAgentId, { steeringX: x, steeringY: y });
       updateSteering(selectedAgentId, x, y);
+    }
+  };
+
+  const handleToolToggle = (tool: string, enabled: boolean) => {
+    if (selectedAgentId && selectedAgent) {
+      const newEnabledTools = enabled
+        ? [...(selectedAgent.enabledTools || selectedAgent.tools), tool]
+        : (selectedAgent.enabledTools || selectedAgent.tools).filter(t => t !== tool);
+      updateAgent(selectedAgentId, { enabledTools: newEnabledTools });
+      toggleTool(selectedAgentId, tool, enabled);
     }
   };
 
@@ -86,7 +96,7 @@ export function MainLayout() {
               <SteeringControls
                 agent={selectedAgent}
                 onSteeringChange={handleSteeringChange}
-                onToolToggle={(tool, enabled) => console.log('Tool toggle:', tool, enabled)}
+                onToolToggle={handleToolToggle}
               />
             </ScrollArea>
           )}

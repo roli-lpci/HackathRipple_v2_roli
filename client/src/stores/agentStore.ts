@@ -13,6 +13,9 @@ export interface Agent {
   steeringX: number;
   steeringY: number;
   tools: string[];
+  enabledTools: string[];
+  tokenCount: number;
+  costSpent: number;
 }
 
 export interface Task {

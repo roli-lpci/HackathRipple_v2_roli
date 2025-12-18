@@ -14,6 +14,9 @@ export interface Agent {
   steeringX: number;
   steeringY: number;
   tools: string[];
+  enabledTools: string[];
+  tokenCount: number;
+  costSpent: number;
   currentTaskId?: string;
 }
 
@@ -146,7 +149,8 @@ export async function getAgentDecision(
   context: string,
   previousResults: string[]
 ): Promise<AgentDecision> {
-  const availableTools = agent.tools.map(t => TOOL_DEFINITIONS[t as keyof typeof TOOL_DEFINITIONS]).filter(Boolean);
+  const enabledTools = agent.enabledTools || agent.tools;
+  const availableTools = enabledTools.map(t => TOOL_DEFINITIONS[t as keyof typeof TOOL_DEFINITIONS]).filter(Boolean);
   
   const steeringContext = `
 Steering parameters (0-1 scale):
@@ -291,15 +295,21 @@ Keep it focused - maximum 3 agents, 1-2 tasks per agent. Match tools to agent pu
     
     const plan = JSON.parse(jsonMatch[0]);
     
-    const agents: Omit<Agent, 'id'>[] = plan.agents.map((a: { name: string; description: string; tools: string[] }, i: number) => ({
-      name: a.name,
-      description: a.description,
-      status: 'idle' as AgentStatus,
-      position: { x: i * 150, y: 0 },
-      steeringX: 0.5,
-      steeringY: 0.5,
-      tools: a.tools.filter((t: string) => ['web_search', 'analyze_data', 'code_writer'].includes(t)),
-    }));
+    const agents: Omit<Agent, 'id'>[] = plan.agents.map((a: { name: string; description: string; tools: string[] }, i: number) => {
+      const validTools = a.tools.filter((t: string) => ['web_search', 'analyze_data', 'code_writer'].includes(t));
+      return {
+        name: a.name,
+        description: a.description,
+        status: 'idle' as AgentStatus,
+        position: { x: i * 150, y: 0 },
+        steeringX: 0.5,
+        steeringY: 0.5,
+        tools: validTools,
+        enabledTools: validTools,
+        tokenCount: 0,
+        costSpent: 0,
+      };
+    });
 
     const tasks: Omit<Task, 'id' | 'assignedAgentId'>[] = plan.tasks.map((t: { goal: string; successCriteria: string; inputs: string[]; agentIndex: number }) => ({
       goal: t.goal,
@@ -323,6 +333,9 @@ Keep it focused - maximum 3 agents, 1-2 tasks per agent. Match tools to agent pu
         steeringX: 0.5,
         steeringY: 0.5,
         tools: ['web_search', 'analyze_data', 'code_writer'],
+        enabledTools: ['web_search', 'analyze_data', 'code_writer'],
+        tokenCount: 0,
+        costSpent: 0,
       }],
       tasks: [{
         goal: userGoal,

@@ -20,8 +20,10 @@ const toolIcons: Record<string, typeof Search> = {
 };
 
 export function SteeringControls({ agent, onSteeringChange, onToolToggle }: SteeringControlsProps) {
-  const contextUsage = 35;
-  const costSpent = 0.04;
+  const enabledTools = agent.enabledTools || agent.tools;
+  const maxTokens = 128000;
+  const contextUsage = Math.min(100, Math.round((agent.tokenCount / maxTokens) * 100));
+  const costSpent = agent.costSpent || 0;
 
   return (
     <div className="space-y-4 p-4">
@@ -73,6 +75,7 @@ export function SteeringControls({ agent, onSteeringChange, onToolToggle }: Stee
         <CardContent className="space-y-3">
           {agent.tools.map((tool) => {
             const Icon = toolIcons[tool] || Search;
+            const isEnabled = enabledTools.includes(tool);
             return (
               <div key={tool} className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
@@ -81,7 +84,7 @@ export function SteeringControls({ agent, onSteeringChange, onToolToggle }: Stee
                 </div>
                 <Switch
                   data-testid={`switch-tool-${tool}`}
-                  defaultChecked
+                  checked={isEnabled}
                   onCheckedChange={(checked) => onToolToggle?.(tool, checked)}
                 />
               </div>
