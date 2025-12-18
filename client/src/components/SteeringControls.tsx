@@ -6,7 +6,8 @@ import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { XYPad } from './XYPad';
-import { Search, Code, Database, Globe, Fuel, DollarSign, RotateCcw, Loader2, Bookmark, Save, Sparkles } from 'lucide-react';
+import { Search, Code, Database, Globe, Fuel, DollarSign, RotateCcw, Loader2, Bookmark, Save, Sparkles, Eye, EyeOff } from 'lucide-react';
+import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
 import { cn } from '@/lib/utils';
 import { useAgentStore, type Agent, type SteeringProfile } from '@/stores/agentStore';
 import { useState } from 'react';
@@ -35,6 +36,45 @@ export function SteeringControls({ agent, onSteeringChange, onToolToggle, onReru
   const hasPendingChanges = agent.lastAppliedSteeringX !== undefined && 
     (Math.abs(agent.steeringX - agent.lastAppliedSteeringX) > 0.01 || 
      Math.abs(agent.steeringY - (agent.lastAppliedSteeringY ?? agent.steeringY)) > 0.01);
+
+  const [showPromptPreview, setShowPromptPreview] = useState(false);
+
+  const getSteeringContextPreview = () => {
+    const xDesc = agent.steeringX < 0.3 
+      ? 'low - ask for guidance often' 
+      : agent.steeringX > 0.7 
+        ? 'high - work independently' 
+        : 'medium - balance guidance and autonomy';
+    const yDesc = agent.steeringY < 0.3 
+      ? 'prioritize speed' 
+      : agent.steeringY > 0.7 
+        ? 'prioritize thoroughness' 
+        : 'balanced';
+    
+    return `Steering parameters (0-1 scale):
+- Autonomy (X): ${agent.steeringX.toFixed(2)} (${xDesc})
+- Speed vs Quality (Y): ${agent.steeringY.toFixed(2)} (${yDesc})`;
+  };
+
+  const getLastAppliedContextPreview = () => {
+    if (agent.lastAppliedSteeringX === undefined) return null;
+    const x = agent.lastAppliedSteeringX;
+    const y = agent.lastAppliedSteeringY ?? 0.5;
+    const xDesc = x < 0.3 
+      ? 'low - ask for guidance often' 
+      : x > 0.7 
+        ? 'high - work independently' 
+        : 'medium - balance guidance and autonomy';
+    const yDesc = y < 0.3 
+      ? 'prioritize speed' 
+      : y > 0.7 
+        ? 'prioritize thoroughness' 
+        : 'balanced';
+    
+    return `Steering parameters (0-1 scale):
+- Autonomy (X): ${x.toFixed(2)} (${xDesc})
+- Speed vs Quality (Y): ${y.toFixed(2)} (${yDesc})`;
+  };
 
   const applyProfile = (profile: SteeringProfile) => {
     onSteeringChange(profile.steeringX, profile.steeringY);
@@ -147,6 +187,32 @@ export function SteeringControls({ agent, onSteeringChange, onToolToggle, onReru
               </>
             )}
           </Button>
+          
+          <Collapsible open={showPromptPreview} onOpenChange={setShowPromptPreview} className="w-full">
+            <CollapsibleTrigger asChild>
+              <Button variant="ghost" size="sm" className="w-full gap-2 text-xs text-muted-foreground" data-testid="button-toggle-prompt-preview">
+                {showPromptPreview ? <EyeOff className="w-3 h-3" /> : <Eye className="w-3 h-3" />}
+                {showPromptPreview ? 'Hide' : 'Show'} Prompt Preview
+              </Button>
+            </CollapsibleTrigger>
+            <CollapsibleContent className="pt-2 space-y-2">
+              <div className="text-xs font-medium text-muted-foreground">Current Steering Context:</div>
+              <pre className={cn(
+                "text-xs p-2 rounded bg-muted/50 whitespace-pre-wrap font-mono",
+                hasPendingChanges && "border border-chart-4/30"
+              )}>
+                {getSteeringContextPreview()}
+              </pre>
+              {hasPendingChanges && getLastAppliedContextPreview() && (
+                <>
+                  <div className="text-xs font-medium text-muted-foreground">Last Applied:</div>
+                  <pre className="text-xs p-2 rounded bg-muted/30 whitespace-pre-wrap font-mono opacity-60">
+                    {getLastAppliedContextPreview()}
+                  </pre>
+                </>
+              )}
+            </CollapsibleContent>
+          </Collapsible>
         </CardContent>
       </Card>
 
