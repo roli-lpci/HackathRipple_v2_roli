@@ -75,16 +75,45 @@ export function OmniConsole({
   const generateContextPreview = () => {
     if (!selectedAgent) return null;
     
-    const steeringContext = `Steering parameters (0-1 scale):
-- Autonomy (X): ${selectedAgent.steeringX.toFixed(2)} (${selectedAgent.steeringX < 0.3 ? 'low - ask for guidance often' : selectedAgent.steeringX > 0.7 ? 'high - work independently' : 'medium - balance guidance and autonomy'})
-- Speed vs Quality (Y): ${selectedAgent.steeringY.toFixed(2)} (${selectedAgent.steeringY < 0.3 ? 'prioritize speed' : selectedAgent.steeringY > 0.7 ? 'prioritize thoroughness' : 'balanced'})`;
-
+    const autonomyLevel = selectedAgent.steeringX < 0.3 ? 'low' : selectedAgent.steeringX > 0.7 ? 'high' : 'medium';
+    const qualityLevel = selectedAgent.steeringY < 0.3 ? 'speed' : selectedAgent.steeringY > 0.7 ? 'quality' : 'balanced';
+    
+    const autonomyInstruction = {
+      low: 'Ask the user for confirmation before taking significant actions. Request guidance when uncertain.',
+      medium: 'Use your judgment for routine tasks but consult the user for important decisions.',
+      high: 'Work independently. Only pause for critical blockers. Make autonomous decisions.'
+    }[autonomyLevel];
+    
+    const qualityInstruction = {
+      speed: 'Prioritize speed and efficiency. Provide concise responses. Skip edge cases.',
+      balanced: 'Balance thoroughness with efficiency. Cover main scenarios.',
+      quality: 'Be thorough and meticulous. Consider all edge cases. Provide comprehensive analysis.'
+    }[qualityLevel];
+    
     const enabledTools = selectedAgent.enabledTools || selectedAgent.tools;
-    const toolsContext = enabledTools.length > 0 
-      ? `Available tools: ${enabledTools.join(', ')}`
-      : 'No tools enabled';
+    const disabledTools = selectedAgent.tools.filter(t => !enabledTools.includes(t));
+    
+    const toolInstructions = disabledTools.length > 0 
+      ? `\n\nDISABLED TOOLS (DO NOT USE): ${disabledTools.join(', ')}`
+      : '';
+    
+    const systemPrompt = `You are ${selectedAgent.name}, ${selectedAgent.description.toLowerCase()}.
 
-    return { steeringContext, toolsContext };
+AUTONOMY (X=${(selectedAgent.steeringX * 100).toFixed(0)}%):
+${autonomyInstruction}
+
+QUALITY/SPEED (Y=${(selectedAgent.steeringY * 100).toFixed(0)}%):
+${qualityInstruction}
+
+AVAILABLE TOOLS: ${enabledTools.length > 0 ? enabledTools.join(', ') : 'None'}${toolInstructions}`;
+
+    return { 
+      systemPrompt,
+      tokenCount: selectedAgent.tokenCount || 0,
+      costSpent: selectedAgent.costSpent || 0,
+      enabledTools,
+      disabledTools
+    };
   };
 
   const context = generateContextPreview();
@@ -208,44 +237,50 @@ export function OmniConsole({
           
           <TabsContent value="context" className="h-[calc(100%-48px)] m-0">
             <ScrollArea className="h-full p-4">
-              {selectedAgent ? (
+              {selectedAgent && context ? (
                 <div className="space-y-4">
-                  <div className="p-3 rounded-lg bg-muted/30 border">
-                    <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
-                      <Brain className="w-4 h-4" />
-                      Agent: {selectedAgent.name}
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="text-sm font-semibold flex items-center gap-2">
+                      <Brain className="w-4 h-4 text-primary" />
+                      {selectedAgent.name} - Live System Prompt
                     </h4>
-                    <p className="text-xs text-muted-foreground mb-3">{selectedAgent.description}</p>
-                    
-                    <div className="space-y-3 font-mono text-xs">
-                      <div className="p-2 rounded bg-background">
-                        <span className="text-chart-4 font-semibold">System Prompt Injection:</span>
-                        <pre className="mt-1 whitespace-pre-wrap text-muted-foreground">
-{context?.steeringContext}
-                        </pre>
-                      </div>
-                      
-                      <div className="p-2 rounded bg-background">
-                        <span className="text-chart-3 font-semibold">Tool Configuration:</span>
-                        <pre className="mt-1 whitespace-pre-wrap text-muted-foreground">
-{context?.toolsContext}
-                        </pre>
-                      </div>
-                      
-                      <div className="p-2 rounded bg-background">
-                        <span className="text-chart-1 font-semibold">Token Usage:</span>
-                        <pre className="mt-1 whitespace-pre-wrap text-muted-foreground">
-Tokens used: {selectedAgent.tokenCount?.toLocaleString() || 0}
-Estimated cost: ${(selectedAgent.costSpent || 0).toFixed(6)}
-                        </pre>
-                      </div>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                      <span>{context.tokenCount.toLocaleString()} tokens</span>
+                      <span className="text-chart-1">${context.costSpent.toFixed(4)}</span>
                     </div>
                   </div>
+                  
+                  <div className="p-4 rounded-lg bg-muted/30 border font-mono text-xs leading-relaxed">
+                    <pre className="whitespace-pre-wrap text-foreground">{context.systemPrompt}</pre>
+                  </div>
+                  
+                  {context.disabledTools.length > 0 && (
+                    <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/30">
+                      <div className="flex items-center gap-2 text-destructive text-xs font-semibold mb-1">
+                        <Wrench className="w-3 h-3" />
+                        Disabled Tools
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {context.disabledTools.map(tool => (
+                          <span key={tool} className="px-2 py-0.5 rounded bg-destructive/20 text-destructive text-xs">
+                            {tool}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                  
+                  <p className="text-xs text-muted-foreground text-center">
+                    Move the steering controls to see this prompt update in real-time
+                  </p>
                 </div>
               ) : (
-                <p className="text-sm text-muted-foreground text-center py-8">
-                  Select an agent to inspect its context and configuration.
-                </p>
+                <div className="flex flex-col items-center justify-center h-full text-center py-8">
+                  <Brain className="w-8 h-8 text-muted-foreground/30 mb-2" />
+                  <p className="text-sm text-muted-foreground">
+                    Select an agent on the graph to inspect its system prompt
+                  </p>
+                </div>
               )}
             </ScrollArea>
           </TabsContent>
