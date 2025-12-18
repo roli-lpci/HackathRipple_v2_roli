@@ -4,9 +4,11 @@ import { ChatThread } from './ChatThread';
 import { AgentCanvas } from './AgentCanvas';
 import { SteeringControls } from './SteeringControls';
 import { OmniConsole } from './OmniConsole';
+import { FileUpload } from './FileUpload';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useAgentStore } from '@/stores/agentStore';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { Maximize2 } from 'lucide-react';
 
 export function MainLayout() {
   const {
@@ -49,7 +51,7 @@ export function MainLayout() {
   return (
     <div className="flex flex-col h-screen bg-background">
       <GodModeInput onSubmit={handleGodModeSubmit} isLoading={isLoading} />
-      
+
       <div className="flex-1 flex overflow-hidden">
         <div className="w-[60%] border-r flex flex-col">
           <ChatThread
@@ -73,16 +75,25 @@ export function MainLayout() {
               onToggleExpand={() => setIsCanvasExpanded(!isCanvasExpanded)}
             />
           </div>
-          
-          {selectedAgent && (
-            <ScrollArea className="border-t max-h-[50%]">
-              <SteeringControls
-                agent={selectedAgent}
-                onSteeringChange={handleSteeringChange}
-                onToolToggle={(tool, enabled) => console.log('Tool toggle:', tool, enabled)}
-              />
-            </ScrollArea>
-          )}
+
+          <ScrollArea className="border-t max-h-[50%]">
+            <div className="space-y-4">
+              <FileUpload />
+              {selectedAgent ? (
+                <SteeringControls
+                  agent={selectedAgent}
+                  onSteeringChange={(x, y) => {
+                    updateAgent(selectedAgent.id, { steeringX: x, steeringY: y });
+                  }}
+                  onToolToggle={(tool, enabled) => console.log('Tool toggle:', tool, enabled)}
+                />
+              ) : (
+                <div className="p-4 text-sm text-muted-foreground">
+                  Select an agent to view controls
+                </div>
+              )}
+            </div>
+          </ScrollArea>
         </div>
       </div>
 

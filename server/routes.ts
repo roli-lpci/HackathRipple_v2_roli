@@ -57,11 +57,11 @@ async function runAgentLoop(
   task: Task
 ) {
   const previousResults: string[] = [];
-  
+
   agent.status = 'working';
   agent.currentTaskId = task.id;
   broadcast(wss, 'agent_update', agent);
-  
+
   task.status = 'active';
   broadcast(wss, 'task_update', task);
 
@@ -118,7 +118,7 @@ async function runAgentLoop(
       const toolResult = await executeToolMock(decision.tool, decision.toolInput || {});
       previousResults.push(`Tool: ${decision.tool}\nResult: ${toolResult}`);
       task.outputs.push(toolResult);
-      
+
       addLog(wss, {
         agentId: agent.id,
         agentName: agent.name,
@@ -135,7 +135,7 @@ async function runAgentLoop(
         createdAt: new Date(),
       };
       missionState.artifacts.set(artifact.id, artifact);
-      
+
       addLog(wss, {
         agentId: agent.id,
         agentName: agent.name,
@@ -157,7 +157,7 @@ async function runAgentLoop(
       task.status = 'done';
     } else if (decision.action === 'complete') {
       task.status = 'done';
-      
+
       broadcast(wss, 'message', {
         id: randomUUID(),
         role: 'agent',
@@ -168,7 +168,7 @@ async function runAgentLoop(
       });
     } else if (decision.action === 'ask_user') {
       task.status = 'blocked';
-      
+
       broadcast(wss, 'message', {
         id: randomUUID(),
         role: 'agent',
@@ -203,23 +203,43 @@ export async function registerRoutes(
 ): Promise<Server> {
   const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
 
+  // File upload endpoint for feeding files to agents
+  app.post('/api/upload-artifact', async (req, res) => {
+    try {
+      const { name, content, type = 'text' } = req.body;
+
+      if (!name || !content) {
+        return res.status(400).json({ error: 'Name and content are required' });
+      }
+
+      const artifact: Artifact = {
+        id: randomUUID(),
+        name,
+        type: type as 'markdown' | 'json' | 'text' | 'code',
+        content,
+        createdBy: 'User',
+        createdAt: new Date(),
+      };
+
+      missionState.artifacts.set(artifact.id, artifact);
+      broadcast(wss, 'artifact_created', artifact);
+
+      console.log(`Artifact uploaded: ${name}`);
+      res.json({ success: true, artifact });
+    } catch (error) {
+      console.error(`Upload error: ${error}`);
+      res.status(500).json({ error: 'Failed to upload artifact' });
+    }
+  });
+
   wss.on('connection', (ws) => {
     console.log('WebSocket client connected');
-
-    ws.send(JSON.stringify({
-      type: 'init',
-      payload: {
-        agents: Array.from(missionState.agents.values()),
-        tasks: Array.from(missionState.tasks.values()),
-        artifacts: Array.from(missionState.artifacts.values()),
-        logs: missionState.logs,
-      },
-    }));
+    ws.send(JSON.stringify({ type: 'connected' }));
 
     ws.on('message', async (data) => {
       try {
         const message = JSON.parse(data.toString());
-        
+
         if (message.type === 'god_mode') {
           const userGoal = message.payload.goal;
           missionState.context = userGoal;

@@ -75,9 +75,18 @@ const TOOL_DEFINITIONS = {
     description: 'Write code in various programming languages',
     parameters: { language: 'string', task: 'string' },
   },
+  read_file: {
+    name: 'read_file',
+    description: 'Read the contents of a file or artifact by name',
+    parameters: { filename: 'string' },
+  },
 };
 
-export async function executeToolMock(toolName: string, input: Record<string, unknown>): Promise<string> {
+export async function executeToolMock(
+  toolName: string, 
+  input: Record<string, unknown>,
+  artifacts?: Map<string, Artifact>
+): Promise<string> {
   await new Promise(r => setTimeout(r, 500 + Math.random() * 1000));
   
   switch (toolName) {
@@ -105,6 +114,26 @@ export async function executeToolMock(toolName: string, input: Record<string, un
         code,
         language: input.language,
         summary: `Generated ${input.language} code for the specified task.`
+      });
+    case 'read_file':
+      if (!artifacts) {
+        return JSON.stringify({ error: 'No artifacts available to read' });
+      }
+      const filename = input.filename as string;
+      const artifact = Array.from(artifacts.values()).find(a => a.name === filename);
+      if (!artifact) {
+        const available = Array.from(artifacts.values()).map(a => a.name).join(', ');
+        return JSON.stringify({ 
+          error: `File "${filename}" not found`,
+          availableFiles: available || 'No files available'
+        });
+      }
+      return JSON.stringify({
+        filename: artifact.name,
+        type: artifact.type,
+        content: artifact.content,
+        createdBy: artifact.createdBy,
+        summary: `Successfully read file "${filename}" (${artifact.type})`
       });
     default:
       return JSON.stringify({ error: `Unknown tool: ${toolName}` });
