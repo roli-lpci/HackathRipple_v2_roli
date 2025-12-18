@@ -377,6 +377,39 @@ export async function registerRoutes(
               data: { action: 'tool_toggle', tool, enabled },
             });
           }
+        } else if (message.type === 'rerun_agent') {
+          const { agentId } = message.payload;
+          const agent = missionState.agents.get(agentId);
+          if (agent && agent.status !== 'working') {
+            agent.status = 'working';
+            broadcast(wss, 'agent_update', agent);
+
+            addLog(wss, {
+              agentId: agent.id,
+              agentName: agent.name,
+              type: 'action',
+              data: { action: 'rerun', steeringX: agent.steeringX, steeringY: agent.steeringY },
+            });
+
+            const existingTask = Array.from(missionState.tasks.values()).find(t => t.assignedAgentId === agentId);
+            const task: Task = {
+              id: randomUUID(),
+              goal: existingTask?.goal || `Continue work with updated steering (X: ${(agent.steeringX * 100).toFixed(0)}%, Y: ${(agent.steeringY * 100).toFixed(0)}%)`,
+              status: 'pending',
+              assignedAgentId: agent.id,
+              inputs: existingTask?.inputs || [],
+              outputs: [],
+              successCriteria: existingTask?.successCriteria || 'Complete task with new steering parameters',
+              iterationCount: 0,
+              maxIterations: 3,
+            };
+            missionState.tasks.set(task.id, task);
+            
+            await runAgentLoop(wss, agent, task);
+            
+            agent.status = 'complete';
+            broadcast(wss, 'agent_update', agent);
+          }
         } else if (message.type === 'reset') {
           missionState.agents.clear();
           missionState.tasks.clear();

@@ -1,10 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { XYPad } from './XYPad';
-import { Search, Code, Database, Globe, Fuel, DollarSign } from 'lucide-react';
+import { Search, Code, Database, Globe, Fuel, DollarSign, RotateCcw, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { Agent } from '@/stores/agentStore';
 
@@ -12,6 +13,7 @@ interface SteeringControlsProps {
   agent: Agent;
   onSteeringChange: (x: number, y: number) => void;
   onToolToggle?: (tool: string, enabled: boolean) => void;
+  onRerun?: (agentId: string) => void;
 }
 
 const toolIcons: Record<string, typeof Search> = {
@@ -20,7 +22,7 @@ const toolIcons: Record<string, typeof Search> = {
   analyze_data: Database,
 };
 
-export function SteeringControls({ agent, onSteeringChange, onToolToggle }: SteeringControlsProps) {
+export function SteeringControls({ agent, onSteeringChange, onToolToggle, onRerun }: SteeringControlsProps) {
   const enabledTools = agent.enabledTools || agent.tools;
   const maxTokens = 128000;
   const contextUsage = Math.min(100, Math.round((agent.tokenCount / maxTokens) * 100));
@@ -52,6 +54,26 @@ export function SteeringControls({ agent, onSteeringChange, onToolToggle }: Stee
           <p className="text-xs text-muted-foreground text-center">
             X: {(agent.steeringX * 100).toFixed(0)}% | Y: {(agent.steeringY * 100).toFixed(0)}%
           </p>
+          
+          <Button
+            data-testid="button-rerun-agent"
+            onClick={() => onRerun?.(agent.id)}
+            disabled={agent.status === 'working'}
+            className="w-full gap-2"
+            variant={agent.status === 'complete' ? 'default' : 'secondary'}
+          >
+            {agent.status === 'working' ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Running...
+              </>
+            ) : (
+              <>
+                <RotateCcw className="w-4 h-4" />
+                Apply & Re-run
+              </>
+            )}
+          </Button>
         </CardContent>
       </Card>
 

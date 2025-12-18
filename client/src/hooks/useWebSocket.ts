@@ -121,12 +121,17 @@ export function useWebSocket() {
     sendMessage('tool_toggle', { agentId, tool, enabled });
   }, [sendMessage]);
 
+  const rerunAgent = useCallback((agentId: string) => {
+    sendMessage('rerun_agent', { agentId });
+  }, [sendMessage]);
+
   return {
     sendGodMode,
     sendChat,
     updateSteering,
     toggleTool,
     resetMission,
+    rerunAgent,
     isConnected: wsRef.current?.readyState === WebSocket.OPEN,
   };
 }

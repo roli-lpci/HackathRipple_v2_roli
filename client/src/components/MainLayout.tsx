@@ -29,7 +29,7 @@ export function MainLayout() {
     clearExecutionLogs,
   } = useAgentStore();
 
-  const { sendGodMode, sendChat, updateSteering, toggleTool } = useWebSocket();
+  const { sendGodMode, sendChat, updateSteering, toggleTool, rerunAgent } = useWebSocket();
 
   const [isLoading, setIsLoading] = useState(false);
   const [isCanvasExpanded, setIsCanvasExpanded] = useState(false);
@@ -142,6 +142,7 @@ export function MainLayout() {
                   <SteeringControls
                     agent={selectedAgent}
                     onSteeringChange={handleSteeringChange}
+                    onRerun={rerunAgent}
                     onToolToggle={handleToolToggle}
                   />
                 </ScrollArea>
