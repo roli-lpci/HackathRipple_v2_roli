@@ -155,18 +155,19 @@ Steering parameters (0-1 scale):
 `;
 
   // Special handling for coordinator agent
-  const isCoordinator = agent.id === 'coordinator-agent';
+  const isCoordinator = agent.name === 'Coordinator';
   
   const prompt = isCoordinator 
     ? `You are the Coordinator, a helpful assistant managing the agent system.
 
-User question: ${context}
+User question: ${task.goal}
 
 Your role is to:
 - Answer questions about the agents, artifacts, and mission progress
 - Explain what artifacts can be used for
 - Guide users on how to interact with the system
 - Be conversational and helpful
+- DO NOT create artifacts or use tools - just answer questions
 
 Respond with valid JSON:
 {
@@ -175,7 +176,7 @@ Respond with valid JSON:
   "reason": "Answering user question"
 }
 
-Be concise and friendly.`
+Be concise and friendly. Never mention iterations unless you actually see them in the context.`
     : `You are an AI agent named "${agent.name}" with the following description: ${agent.description}
 
 Your current task:
@@ -208,6 +209,8 @@ Based on this information, decide your next action. You MUST respond with valid 
 
 Important:
 - If you have enough information, create an artifact with your findings/output
+- When naming artifacts, use descriptive names without iteration numbers (e.g., "analysis_report.md" NOT "analysis_iteration_3.md")
+- Only reference iterations if they actually exist in the previous results
 - Complete the task once you've produced meaningful output
 - Respect the steering parameters for autonomy and thoroughness
 - Stay focused on the specific goal`;

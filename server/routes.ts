@@ -232,9 +232,27 @@ export async function registerRoutes(
     }
   });
 
+  // Initialize coordinator agent for chat
+  let coordinatorAgent: Agent | null = null;
+
   wss.on('connection', (ws) => {
     console.log('WebSocket client connected');
     ws.send(JSON.stringify({ type: 'connected' }));
+
+    // Create coordinator agent on first connection
+    if (!coordinatorAgent) {
+      coordinatorAgent = {
+        id: 'coordinator-agent',
+        name: 'Coordinator',
+        description: 'Helpful assistant for answering questions about agents, artifacts, and mission progress',
+        status: 'idle',
+        position: { x: -150, y: -100 },
+        steeringX: 0.7,
+        steeringY: 0.5,
+        tools: [],
+      };
+      missionState.agents.set(coordinatorAgent.id, coordinatorAgent);
+    }
 
     ws.on('message', async (data) => {
       try {
@@ -308,8 +326,7 @@ export async function registerRoutes(
           });
         } else if (message.type === 'chat') {
           const userMessage = message.payload.content;
-          missionState.context += '\n\nUser follow-up: ' + userMessage;
-
+          
           broadcast(wss, 'message', {
             id: randomUUID(),
             role: 'user',
@@ -317,23 +334,21 @@ export async function registerRoutes(
             timestamp: new Date(),
           });
 
-          const activeAgents = Array.from(missionState.agents.values()).filter(a => a.status === 'idle' || a.status === 'complete');
-          if (activeAgents.length > 0) {
-            const agent = activeAgents[0];
+          // Only coordinator handles chat messages
+          if (coordinatorAgent) {
             const task: Task = {
               id: randomUUID(),
-              goal: userMessage,
+              goal: `Answer user question: ${userMessage}`,
               status: 'pending',
-              assignedAgentId: agent.id,
-              inputs: [],
+              assignedAgentId: coordinatorAgent.id,
+              inputs: [userMessage],
               outputs: [],
-              successCriteria: 'Respond to user query',
+              successCriteria: 'Provide helpful response',
               iterationCount: 0,
-              maxIterations: 3,
+              maxIterations: 1,
             };
             missionState.tasks.set(task.id, task);
-            broadcast(wss, 'task', task);
-            await runAgentLoop(wss, agent, task);
+            await runAgentLoop(wss, coordinatorAgent, task);
           }
         } else if (message.type === 'steering_update') {
           const { agentId, steeringX, steeringY } = message.payload;
