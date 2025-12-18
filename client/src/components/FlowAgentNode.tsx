@@ -85,6 +85,9 @@ function AgentNodeComponent({ data }: NodeProps) {
         )}>
           {config.label}
         </p>
+        {nodeData.status !== 'working' && (
+          <p className="text-[10px] text-muted-foreground/60 mt-1">Double-click to re-run</p>
+        )}
       </div>
 
       <Handle 

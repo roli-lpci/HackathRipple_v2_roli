@@ -26,6 +26,7 @@ interface AgentCanvasProps {
   selectedAgentId: string | null;
   onSelectAgent: (id: string | null) => void;
   onSelectArtifact?: (artifact: Artifact) => void;
+  onRerunAgent?: (agentId: string) => void;
   isExpanded?: boolean;
   onToggleExpand?: () => void;
 }
@@ -41,6 +42,7 @@ export function AgentCanvas({
   selectedAgentId,
   onSelectAgent,
   onSelectArtifact,
+  onRerunAgent,
   isExpanded = false,
   onToggleExpand,
 }: AgentCanvasProps) {
@@ -134,6 +136,15 @@ export function AgentCanvas({
     }
   }, [selectedAgentId, onSelectAgent, onSelectArtifact, artifacts]);
 
+  const onNodeDoubleClick = useCallback((event: React.MouseEvent, node: Node) => {
+    if (node.type === 'agent') {
+      const agent = agents.find(a => a.id === node.id);
+      if (agent && agent.status !== 'working') {
+        onRerunAgent?.(node.id);
+      }
+    }
+  }, [agents, onRerunAgent]);
+
   return (
     <div className={cn(
       'flex flex-col h-full bg-card',
@@ -165,6 +176,7 @@ export function AgentCanvas({
             onNodesChange={onNodesChange}
             onEdgesChange={onEdgesChange}
             onNodeClick={onNodeClick}
+            onNodeDoubleClick={onNodeDoubleClick}
             nodeTypes={nodeTypes}
             fitView
             fitViewOptions={{ padding: 0.3 }}

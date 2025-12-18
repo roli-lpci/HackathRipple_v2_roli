@@ -131,6 +131,7 @@ export function MainLayout() {
                 selectedAgentId={selectedAgentId}
                 onSelectAgent={selectAgent}
                 onSelectArtifact={handleViewArtifact}
+                onRerunAgent={rerunAgent}
                 isExpanded={isCanvasExpanded}
                 onToggleExpand={() => setIsCanvasExpanded(!isCanvasExpanded)}
               />
