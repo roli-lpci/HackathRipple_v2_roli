@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { FileText, Code, FileJson, File } from 'lucide-react';
 
@@ -23,11 +24,21 @@ function ArtifactNodeComponent({ data }: NodeProps) {
   const Icon = config.icon;
 
   return (
-    <div
+    <motion.div
       data-testid={`artifact-node-${nodeData.id}`}
+      initial={{ scale: 0, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ 
+        type: 'spring', 
+        stiffness: 400, 
+        damping: 15,
+        mass: 0.8
+      }}
+      whileHover={{ scale: 1.05 }}
+      whileTap={{ scale: 0.98 }}
       className={cn(
-        'flex items-center gap-2 px-3 py-2 rounded-lg border-2 cursor-pointer transition-all',
-        'shadow-md hover:scale-105',
+        'flex items-center gap-2 px-3 py-2 rounded-lg border-2 cursor-pointer',
+        'shadow-md',
         config.color
       )}
     >
@@ -45,7 +56,7 @@ function ArtifactNodeComponent({ data }: NodeProps) {
         position={Position.Right} 
         className="w-2 h-2 bg-chart-3 border border-background"
       />
-    </div>
+    </motion.div>
   );
 }
 

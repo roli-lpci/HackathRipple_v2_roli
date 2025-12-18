@@ -1,5 +1,6 @@
 import { memo } from 'react';
 import { Handle, Position, type NodeProps } from '@xyflow/react';
+import { motion } from 'framer-motion';
 import { cn } from '@/lib/utils';
 import { Bot, CheckCircle, AlertCircle, Loader2 } from 'lucide-react';
 import type { AgentStatus } from '@/stores/agentStore';
@@ -26,10 +27,19 @@ function AgentNodeComponent({ data }: NodeProps) {
   const Icon = config.icon;
 
   return (
-    <div
+    <motion.div
       data-testid={`agent-node-${nodeData.id}`}
+      initial={{ scale: 0.8, opacity: 0 }}
+      animate={{ scale: 1, opacity: 1 }}
+      transition={{ 
+        type: 'spring', 
+        stiffness: 300, 
+        damping: 20
+      }}
+      whileHover={{ scale: 1.02 }}
+      whileTap={{ scale: 0.98 }}
       className={cn(
-        'flex flex-col items-center gap-2 p-4 cursor-pointer transition-all',
+        'flex flex-col items-center gap-2 p-4 cursor-pointer',
         'bg-card rounded-xl border-2 shadow-lg min-w-[120px]',
         nodeData.isSelected ? 'border-primary ring-4 ring-primary/20 scale-105' : 'border-border',
         nodeData.status === 'working' && 'animate-pulse'
@@ -82,7 +92,7 @@ function AgentNodeComponent({ data }: NodeProps) {
         position={Position.Right} 
         className="w-3 h-3 bg-primary border-2 border-background"
       />
-    </div>
+    </motion.div>
   );
 }
 
