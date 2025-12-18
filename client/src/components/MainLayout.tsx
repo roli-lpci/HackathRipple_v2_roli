@@ -122,34 +122,33 @@ export function MainLayout() {
       />
       
       <div className="flex-1 flex overflow-hidden">
-        <div className={cn(
-          'flex flex-col border-r transition-all duration-300',
-          isGraphCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-[50%]'
-        )}>
-          <div className="flex-1 overflow-hidden">
-            <AgentCanvas
-              agents={agents}
-              artifacts={artifacts}
-              selectedAgentId={selectedAgentId}
-              onSelectAgent={selectAgent}
-              onSelectArtifact={handleViewArtifact}
-              isExpanded={isCanvasExpanded}
-              onToggleExpand={() => setIsCanvasExpanded(!isCanvasExpanded)}
-            />
-          </div>
-          
-          {selectedAgent && (
-            <div className="border-t max-h-[40%] overflow-hidden">
-              <ScrollArea className="h-full">
-                <SteeringControls
-                  agent={selectedAgent}
-                  onSteeringChange={handleSteeringChange}
-                  onToolToggle={handleToolToggle}
-                />
-              </ScrollArea>
+        {!isGraphCollapsed && (
+          <div className="flex flex-col border-r w-[50%]">
+            <div className="flex-1 overflow-hidden">
+              <AgentCanvas
+                agents={agents}
+                artifacts={artifacts}
+                selectedAgentId={selectedAgentId}
+                onSelectAgent={selectAgent}
+                onSelectArtifact={handleViewArtifact}
+                isExpanded={isCanvasExpanded}
+                onToggleExpand={() => setIsCanvasExpanded(!isCanvasExpanded)}
+              />
             </div>
-          )}
-        </div>
+            
+            {selectedAgent && (
+              <div className="border-t max-h-[40%] overflow-hidden">
+                <ScrollArea className="h-full">
+                  <SteeringControls
+                    agent={selectedAgent}
+                    onSteeringChange={handleSteeringChange}
+                    onToolToggle={handleToolToggle}
+                  />
+                </ScrollArea>
+              </div>
+            )}
+          </div>
+        )}
 
         <div className={cn(
           'flex flex-col transition-all duration-300',

@@ -67,6 +67,7 @@ export function AgentCanvas({
         position: { x: 100 + creatorIndex * 200, y: 280 + (index % 3) * 60 },
         data: {
           ...artifact,
+          key: `artifact-anim-${artifact.id}-${artifact.createdAt || Date.now()}`,
           onClick: () => onSelectArtifact?.(artifact),
         },
         sourcePosition: Position.Right,
