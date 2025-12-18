@@ -108,6 +108,9 @@ export function MainLayout() {
         isOpen={isConsoleOpen}
         onToggle={toggleConsole}
         onClear={clearExecutionLogs}
+        selectedAgent={selectedAgent}
+        artifacts={artifacts}
+        onViewArtifact={handleViewArtifact}
       />
 
       <ArtifactViewer

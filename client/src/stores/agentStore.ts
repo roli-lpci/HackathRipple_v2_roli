@@ -53,7 +53,7 @@ export interface ExecutionLog {
   timestamp: Date;
   agentId: string;
   agentName: string;
-  type: 'decision' | 'action' | 'artifact' | 'error';
+  type: 'decision' | 'action' | 'artifact' | 'error' | 'complete';
   data: Record<string, unknown>;
 }
 
