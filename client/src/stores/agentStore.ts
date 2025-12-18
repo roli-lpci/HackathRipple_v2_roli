@@ -57,12 +57,21 @@ export interface ExecutionLog {
   data: Record<string, unknown>;
 }
 
+export interface SteeringProfile {
+  id: string;
+  name: string;
+  steeringX: number;
+  steeringY: number;
+  enabledTools: string[];
+}
+
 interface AgentStore {
   agents: Agent[];
   tasks: Task[];
   artifacts: Artifact[];
   messages: Message[];
   executionLogs: ExecutionLog[];
+  steeringProfiles: SteeringProfile[];
   selectedAgentId: string | null;
   isConsoleOpen: boolean;
   
@@ -82,10 +91,20 @@ interface AgentStore {
   addExecutionLog: (log: ExecutionLog) => void;
   clearExecutionLogs: () => void;
   
+  addSteeringProfile: (profile: SteeringProfile) => void;
+  removeSteeringProfile: (id: string) => void;
+  
   toggleConsole: () => void;
   
   reset: () => void;
 }
+
+const defaultProfiles: SteeringProfile[] = [
+  { id: 'research', name: 'Research Mode', steeringX: 0.8, steeringY: 0.2, enabledTools: ['web_search', 'analyze_data'] },
+  { id: 'creative', name: 'Creative Mode', steeringX: 0.6, steeringY: 0.9, enabledTools: ['web_search', 'code_writer'] },
+  { id: 'quick', name: 'Quick Summary', steeringX: 0.2, steeringY: 0.3, enabledTools: ['web_search'] },
+  { id: 'detailed', name: 'Detailed Analysis', steeringX: 0.95, steeringY: 0.4, enabledTools: ['web_search', 'analyze_data', 'code_writer'] },
+];
 
 export const useAgentStore = create<AgentStore>((set) => ({
   agents: [],
@@ -93,6 +112,7 @@ export const useAgentStore = create<AgentStore>((set) => ({
   artifacts: [],
   messages: [],
   executionLogs: [],
+  steeringProfiles: defaultProfiles,
   selectedAgentId: null,
   isConsoleOpen: false,
   
@@ -117,6 +137,13 @@ export const useAgentStore = create<AgentStore>((set) => ({
   
   addExecutionLog: (log) => set((state) => ({ executionLogs: [...state.executionLogs, log] })),
   clearExecutionLogs: () => set({ executionLogs: [] }),
+  
+  addSteeringProfile: (profile) => set((state) => ({ 
+    steeringProfiles: [...state.steeringProfiles, profile] 
+  })),
+  removeSteeringProfile: (id) => set((state) => ({ 
+    steeringProfiles: state.steeringProfiles.filter(p => p.id !== id) 
+  })),
   
   toggleConsole: () => set((state) => ({ isConsoleOpen: !state.isConsoleOpen })),
   

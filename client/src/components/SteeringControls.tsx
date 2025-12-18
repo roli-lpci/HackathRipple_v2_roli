@@ -1,13 +1,15 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
 import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { XYPad } from './XYPad';
-import { Search, Code, Database, Globe, Fuel, DollarSign, RotateCcw, Loader2 } from 'lucide-react';
+import { Search, Code, Database, Globe, Fuel, DollarSign, RotateCcw, Loader2, Bookmark, Save, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import type { Agent } from '@/stores/agentStore';
+import { useAgentStore, type Agent, type SteeringProfile } from '@/stores/agentStore';
+import { useState } from 'react';
 
 interface SteeringControlsProps {
   agent: Agent;
@@ -23,10 +25,39 @@ const toolIcons: Record<string, typeof Search> = {
 };
 
 export function SteeringControls({ agent, onSteeringChange, onToolToggle, onRerun }: SteeringControlsProps) {
+  const { steeringProfiles, addSteeringProfile } = useAgentStore();
+  const [savingProfile, setSavingProfile] = useState(false);
   const enabledTools = agent.enabledTools || agent.tools;
   const maxTokens = 128000;
   const contextUsage = Math.min(100, Math.round((agent.tokenCount / maxTokens) * 100));
   const costSpent = agent.costSpent || 0;
+
+  const applyProfile = (profile: SteeringProfile) => {
+    onSteeringChange(profile.steeringX, profile.steeringY);
+    profile.enabledTools.forEach(tool => {
+      if (!enabledTools.includes(tool)) {
+        onToolToggle?.(tool, true);
+      }
+    });
+    agent.tools.forEach(tool => {
+      if (!profile.enabledTools.includes(tool) && enabledTools.includes(tool)) {
+        onToolToggle?.(tool, false);
+      }
+    });
+  };
+
+  const saveCurrentAsProfile = () => {
+    const name = prompt('Enter profile name:');
+    if (name) {
+      addSteeringProfile({
+        id: `custom-${Date.now()}`,
+        name,
+        steeringX: agent.steeringX,
+        steeringY: agent.steeringY,
+        enabledTools: [...enabledTools],
+      });
+    }
+  };
 
   return (
     <div className="space-y-4 p-4">
@@ -34,6 +65,42 @@ export function SteeringControls({ agent, onSteeringChange, onToolToggle, onReru
         <h3 className="text-sm font-semibold mb-1">{agent.name}</h3>
         <p className="text-xs text-muted-foreground">{agent.description}</p>
       </div>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Bookmark className="w-4 h-4" />
+            Quick Profiles
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-2">
+          <div className="flex flex-wrap gap-1.5">
+            {steeringProfiles.map((profile) => (
+              <Button
+                key={profile.id}
+                data-testid={`button-profile-${profile.id}`}
+                variant="outline"
+                size="sm"
+                onClick={() => applyProfile(profile)}
+                className="text-xs gap-1"
+              >
+                <Sparkles className="w-3 h-3" />
+                {profile.name}
+              </Button>
+            ))}
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            className="w-full gap-2 text-xs text-muted-foreground"
+            onClick={saveCurrentAsProfile}
+            data-testid="button-save-profile"
+          >
+            <Save className="w-3 h-3" />
+            Save Current as Profile
+          </Button>
+        </CardContent>
+      </Card>
 
       <Card>
         <CardHeader className="pb-2">
