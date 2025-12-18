@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import { cn } from '@/lib/utils';
 
 interface XYPadProps {
@@ -44,7 +44,7 @@ export function XYPad({
     setIsDragging(false);
   }, []);
 
-  useState(() => {
+  useEffect(() => {
     if (isDragging) {
       window.addEventListener('mousemove', handleMouseMove);
       window.addEventListener('mouseup', handleMouseUp);
@@ -53,49 +53,42 @@ export function XYPad({
         window.removeEventListener('mouseup', handleMouseUp);
       };
     }
-  });
+  }, [isDragging, handleMouseMove, handleMouseUp]);
 
   return (
-    <div className="relative">
-      <div className="absolute -left-6 top-0 bottom-0 flex flex-col justify-between text-xs text-muted-foreground">
-        <span>{yLabel.max}</span>
-        <span>{yLabel.min}</span>
-      </div>
-      <div
-        ref={containerRef}
-        data-testid="xy-pad"
-        onMouseDown={handleMouseDown}
-        className={cn(
-          'relative w-48 h-48 rounded-lg border bg-muted/30 cursor-crosshair',
-          'before:absolute before:inset-0 before:border-l before:border-t before:border-dashed before:border-border/50',
-          'after:absolute after:left-1/2 after:top-1/2 after:w-full after:h-px after:bg-border/30 after:-translate-x-1/2',
-          disabled && 'opacity-50 cursor-not-allowed'
-        )}
-        style={{
-          background: `
-            linear-gradient(to right, transparent 50%, transparent 50%),
-            linear-gradient(to bottom, transparent 50%, transparent 50%),
-            radial-gradient(circle at ${value.x * 100}% ${(1 - value.y) * 100}%, hsl(var(--primary) / 0.1), transparent 40%)
-          `,
-        }}
-      >
-        <div className="absolute left-1/2 top-0 bottom-0 w-px bg-border/30" />
+    <div className="flex flex-col items-center gap-2">
+      <div className="text-xs text-muted-foreground font-medium">{yLabel.max}</div>
+      <div className="flex items-center gap-2">
+        <div className="text-xs text-muted-foreground w-14 text-right">{xLabel.min}</div>
         <div
+          ref={containerRef}
+          data-testid="xy-pad"
+          onMouseDown={handleMouseDown}
           className={cn(
-            'absolute w-5 h-5 rounded-full bg-primary border-2 border-primary-foreground shadow-lg',
-            'transform -translate-x-1/2 -translate-y-1/2 transition-shadow',
-            isDragging && 'shadow-xl scale-110'
+            'relative w-40 h-40 rounded-lg border bg-muted/30 cursor-crosshair',
+            disabled && 'opacity-50 cursor-not-allowed'
           )}
           style={{
-            left: `${value.x * 100}%`,
-            top: `${(1 - value.y) * 100}%`,
+            background: `radial-gradient(circle at ${value.x * 100}% ${(1 - value.y) * 100}%, hsl(var(--primary) / 0.15), transparent 50%)`,
           }}
-        />
+        >
+          <div className="absolute left-1/2 top-0 bottom-0 w-px bg-border/40" />
+          <div className="absolute top-1/2 left-0 right-0 h-px bg-border/40" />
+          <div
+            className={cn(
+              'absolute w-6 h-6 rounded-full bg-primary border-2 border-background shadow-lg',
+              'transform -translate-x-1/2 -translate-y-1/2 transition-all',
+              isDragging && 'shadow-xl scale-110'
+            )}
+            style={{
+              left: `${value.x * 100}%`,
+              top: `${(1 - value.y) * 100}%`,
+            }}
+          />
+        </div>
+        <div className="text-xs text-muted-foreground w-14">{xLabel.max}</div>
       </div>
-      <div className="flex justify-between mt-1 text-xs text-muted-foreground">
-        <span>{xLabel.min}</span>
-        <span>{xLabel.max}</span>
-      </div>
+      <div className="text-xs text-muted-foreground font-medium">{yLabel.min}</div>
     </div>
   );
 }

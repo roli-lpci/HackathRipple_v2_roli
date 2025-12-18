@@ -35,15 +35,23 @@ export function SteeringControls({ agent, onSteeringChange, onToolToggle }: Stee
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Steering</CardTitle>
+          <CardTitle className="text-sm flex items-center justify-between gap-2">
+            <span>Steering</span>
+            {agent.status === 'complete' && (
+              <span className="text-xs font-normal text-muted-foreground">Affects next run</span>
+            )}
+          </CardTitle>
         </CardHeader>
-        <CardContent className="flex justify-center">
+        <CardContent className="flex flex-col items-center gap-3">
           <XYPad
             value={{ x: agent.steeringX, y: agent.steeringY }}
             onChange={({ x, y }) => onSteeringChange(x, y)}
-            xLabel={{ min: 'Summary', max: 'Detailed' }}
+            xLabel={{ min: 'Concise', max: 'Detailed' }}
             yLabel={{ min: 'Factual', max: 'Creative' }}
           />
+          <p className="text-xs text-muted-foreground text-center">
+            X: {(agent.steeringX * 100).toFixed(0)}% | Y: {(agent.steeringY * 100).toFixed(0)}%
+          </p>
         </CardContent>
       </Card>
 
