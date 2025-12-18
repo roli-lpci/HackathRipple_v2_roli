@@ -32,6 +32,10 @@ export function SteeringControls({ agent, onSteeringChange, onToolToggle, onReru
   const contextUsage = Math.min(100, Math.round((agent.tokenCount / maxTokens) * 100));
   const costSpent = agent.costSpent || 0;
 
+  const hasPendingChanges = agent.lastAppliedSteeringX !== undefined && 
+    (Math.abs(agent.steeringX - agent.lastAppliedSteeringX) > 0.01 || 
+     Math.abs(agent.steeringY - (agent.lastAppliedSteeringY ?? agent.steeringY)) > 0.01);
+
   const applyProfile = (profile: SteeringProfile) => {
     onSteeringChange(profile.steeringX, profile.steeringY);
     profile.enabledTools.forEach(tool => {
@@ -106,8 +110,10 @@ export function SteeringControls({ agent, onSteeringChange, onToolToggle, onReru
         <CardHeader className="pb-2">
           <CardTitle className="text-sm flex items-center justify-between gap-2">
             <span>Steering</span>
-            {agent.status === 'complete' && (
-              <span className="text-xs font-normal text-muted-foreground">Affects next run</span>
+            {hasPendingChanges && (
+              <Badge variant="outline" className="text-xs bg-chart-4/10 text-chart-4 border-chart-4/30">
+                Pending Changes
+              </Badge>
             )}
           </CardTitle>
         </CardHeader>

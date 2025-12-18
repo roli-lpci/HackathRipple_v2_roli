@@ -308,6 +308,9 @@ export async function registerRoutes(
           for (const task of newTasks) {
             const agent = missionState.agents.get(task.assignedAgentId);
             if (agent) {
+              agent.lastAppliedSteeringX = agent.steeringX;
+              agent.lastAppliedSteeringY = agent.steeringY;
+              broadcast(wss, 'agent_update', agent);
               await runAgentLoop(wss, agent, task);
             }
           }
@@ -382,6 +385,8 @@ export async function registerRoutes(
           const agent = missionState.agents.get(agentId);
           if (agent && agent.status !== 'working') {
             agent.status = 'working';
+            agent.lastAppliedSteeringX = agent.steeringX;
+            agent.lastAppliedSteeringY = agent.steeringY;
             broadcast(wss, 'agent_update', agent);
 
             addLog(wss, {
