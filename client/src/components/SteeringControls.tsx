@@ -1,10 +1,11 @@
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Switch } from '@/components/ui/switch';
 import { Slider } from '@/components/ui/slider';
-import { Progress } from '@/components/ui/progress';
 import { Label } from '@/components/ui/label';
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { XYPad } from './XYPad';
-import { Search, Code, Database, Globe } from 'lucide-react';
+import { Search, Code, Database, Globe, Fuel, DollarSign } from 'lucide-react';
+import { cn } from '@/lib/utils';
 import type { Agent } from '@/stores/agentStore';
 
 interface SteeringControlsProps {
@@ -95,19 +96,62 @@ export function SteeringControls({ agent, onSteeringChange, onToolToggle }: Stee
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Vitals</CardTitle>
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Fuel className="w-4 h-4" />
+            Context Fuel Gauge
+          </CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          <div>
-            <div className="flex justify-between mb-1">
-              <span className="text-xs text-muted-foreground">Context Usage</span>
-              <span className="text-xs font-mono">{contextUsage}%</span>
+        <CardContent className="space-y-4">
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="relative">
+                <div className="flex justify-between mb-2">
+                  <span className="text-xs text-muted-foreground">Token Usage</span>
+                  <span className={cn(
+                    "text-xs font-mono font-semibold",
+                    contextUsage < 50 && "text-chart-3",
+                    contextUsage >= 50 && contextUsage < 80 && "text-chart-4",
+                    contextUsage >= 80 && "text-destructive"
+                  )}>
+                    {agent.tokenCount.toLocaleString()} / {maxTokens.toLocaleString()}
+                  </span>
+                </div>
+                <div className="h-4 w-full bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className={cn(
+                      "h-full transition-all duration-500 rounded-full",
+                      contextUsage < 50 && "bg-chart-3",
+                      contextUsage >= 50 && contextUsage < 80 && "bg-chart-4",
+                      contextUsage >= 80 && "bg-destructive"
+                    )}
+                    style={{ width: `${contextUsage}%` }}
+                  />
+                </div>
+                <div className="flex justify-between mt-1">
+                  <span className="text-xs text-muted-foreground">0%</span>
+                  <span className={cn(
+                    "text-xs font-semibold",
+                    contextUsage < 50 && "text-chart-3",
+                    contextUsage >= 50 && contextUsage < 80 && "text-chart-4",
+                    contextUsage >= 80 && "text-destructive"
+                  )}>
+                    {contextUsage}%
+                  </span>
+                  <span className="text-xs text-muted-foreground">100%</span>
+                </div>
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{agent.tokenCount.toLocaleString()} tokens used of {maxTokens.toLocaleString()} available</p>
+            </TooltipContent>
+          </Tooltip>
+
+          <div className="flex items-center justify-between p-2 rounded-md bg-muted/50">
+            <div className="flex items-center gap-2">
+              <DollarSign className="w-4 h-4 text-muted-foreground" />
+              <span className="text-xs text-muted-foreground">Cost</span>
             </div>
-            <Progress data-testid="progress-context" value={contextUsage} className="h-2" />
-          </div>
-          <div className="flex justify-between">
-            <span className="text-xs text-muted-foreground">Cost</span>
-            <span className="text-sm font-mono font-medium">${costSpent.toFixed(4)}</span>
+            <span className="text-sm font-mono font-semibold">${costSpent.toFixed(4)}</span>
           </div>
         </CardContent>
       </Card>

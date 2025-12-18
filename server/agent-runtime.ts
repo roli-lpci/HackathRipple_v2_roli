@@ -238,6 +238,12 @@ Important:
       throw new Error('No JSON found in response');
     }
     
+    const promptTokens = Math.ceil(prompt.length / 4);
+    const responseTokens = Math.ceil(text.length / 4);
+    agent.tokenCount = (agent.tokenCount || 0) + promptTokens + responseTokens;
+    const costPerToken = 0.000001;
+    agent.costSpent = (agent.costSpent || 0) + (promptTokens + responseTokens) * costPerToken;
+    
     const decision = JSON.parse(jsonMatch[0]) as AgentDecision;
     return decision;
   } catch (error) {
