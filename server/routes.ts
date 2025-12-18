@@ -98,15 +98,6 @@ async function runAgentLoop(
       data: { action: decision.action, reason: decision.reason, tool: decision.tool },
     });
 
-    broadcast(wss, 'message', {
-      id: randomUUID(),
-      role: 'agent',
-      agentId: agent.id,
-      agentName: agent.name,
-      content: `[${decision.action}] ${decision.reason}`,
-      timestamp: new Date(),
-    });
-
     if (decision.action === 'use_tool' && decision.tool) {
       addLog(wss, {
         agentId: agent.id,
