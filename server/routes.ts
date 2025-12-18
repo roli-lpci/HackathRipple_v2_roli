@@ -334,8 +334,11 @@ export async function registerRoutes(
             timestamp: new Date(),
           });
 
-          // Only coordinator handles chat messages
-          if (coordinatorAgent) {
+          // ONLY coordinator agent handles chat - all other agents ignore chat
+          if (coordinatorAgent && coordinatorAgent.status !== 'working') {
+            coordinatorAgent.status = 'working';
+            broadcast(wss, 'agent_update', coordinatorAgent);
+
             const task: Task = {
               id: randomUUID(),
               goal: `Answer user question: ${userMessage}`,
@@ -349,6 +352,9 @@ export async function registerRoutes(
             };
             missionState.tasks.set(task.id, task);
             await runAgentLoop(wss, coordinatorAgent, task);
+
+            coordinatorAgent.status = 'idle';
+            broadcast(wss, 'agent_update', coordinatorAgent);
           }
         } else if (message.type === 'steering_update') {
           const { agentId, steeringX, steeringY } = message.payload;
