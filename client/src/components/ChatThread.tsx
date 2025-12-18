@@ -3,6 +3,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { ChatMessage } from './ChatMessage';
 import { ArtifactCard } from './ArtifactCard';
 import { ChatInput } from './ChatInput';
+import { Sparkles } from 'lucide-react';
 import type { Message, Artifact } from '@/stores/agentStore';
 
 interface ChatThreadProps {
@@ -32,12 +33,12 @@ export function ChatThread({ messages, artifacts, onSend, onViewArtifact, isLoad
       <ScrollArea className="flex-1 p-4" ref={scrollRef}>
         {messages.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-center p-8">
-            <div className="w-16 h-16 rounded-full bg-accent flex items-center justify-center mb-4">
-              <span className="text-2xl">🤖</span>
+            <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
+              <Sparkles className="w-8 h-8 text-primary" />
             </div>
-            <h3 className="text-lg font-semibold mb-2">Ready to assist</h3>
+            <h3 className="text-lg font-semibold mb-2">Mission Control Ready</h3>
             <p className="text-muted-foreground text-sm max-w-md">
-              Use the God Mode input above to spawn agents, or chat here to interact with existing agents.
+              Use the command bar above to spawn your agent team, then chat here to guide and steer them.
             </p>
           </div>
         ) : (

@@ -1,18 +1,23 @@
 import { useState } from 'react';
-import { GodModeInput } from './GodModeInput';
 import { ChatThread } from './ChatThread';
 import { AgentCanvas } from './AgentCanvas';
 import { SteeringControls } from './SteeringControls';
 import { OmniConsole } from './OmniConsole';
 import { ArtifactViewer } from './ArtifactViewer';
+import { MissionStatusHeader } from './MissionStatusHeader';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Sparkles, Send, Loader2, PanelLeftClose, PanelLeft } from 'lucide-react';
 import { useAgentStore } from '@/stores/agentStore';
 import { useWebSocket } from '@/hooks/useWebSocket';
+import { cn } from '@/lib/utils';
 import type { Artifact } from '@/stores/agentStore';
 
 export function MainLayout() {
   const {
     agents,
+    tasks,
     artifacts,
     messages,
     executionLogs,
@@ -29,12 +34,19 @@ export function MainLayout() {
   const [isLoading, setIsLoading] = useState(false);
   const [isCanvasExpanded, setIsCanvasExpanded] = useState(false);
   const [viewingArtifact, setViewingArtifact] = useState<Artifact | null>(null);
+  const [commandInput, setCommandInput] = useState('');
+  const [currentGoal, setCurrentGoal] = useState('');
+  const [isGraphCollapsed, setIsGraphCollapsed] = useState(false);
 
   const selectedAgent = agents.find(a => a.id === selectedAgentId);
+  const lastLog = executionLogs[executionLogs.length - 1];
 
   const handleGodModeSubmit = async (value: string) => {
+    if (!value.trim()) return;
     setIsLoading(true);
+    setCurrentGoal(value);
     sendGodMode(value);
+    setCommandInput('');
     setTimeout(() => setIsLoading(false), 500);
   };
 
@@ -65,20 +77,55 @@ export function MainLayout() {
 
   return (
     <div className="flex flex-col h-screen bg-background">
-      <GodModeInput onSubmit={handleGodModeSubmit} isLoading={isLoading} />
+      <header className="flex items-center gap-3 px-4 py-3 border-b bg-card/50">
+        <form 
+          onSubmit={(e) => { e.preventDefault(); handleGodModeSubmit(commandInput); }}
+          className="flex-1 flex gap-2"
+        >
+          <div className="flex items-center gap-2 px-3 text-primary">
+            <Sparkles className="w-5 h-5" />
+            <span className="font-semibold text-sm hidden sm:inline">Agent Synapse</span>
+          </div>
+          <Input
+            data-testid="input-god-mode"
+            value={commandInput}
+            onChange={(e) => setCommandInput(e.target.value)}
+            placeholder="Dream your agent team... (e.g., 'Research AI trends and write a report')"
+            className="flex-1 max-w-xl"
+            disabled={isLoading}
+          />
+          <Button 
+            type="submit" 
+            disabled={isLoading || !commandInput.trim()}
+            data-testid="button-god-mode-submit"
+            className="gap-2"
+          >
+            {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+            <span className="hidden sm:inline">Spawn</span>
+          </Button>
+        </form>
+        <Button
+          variant="ghost"
+          size="icon"
+          onClick={() => setIsGraphCollapsed(!isGraphCollapsed)}
+          data-testid="button-toggle-graph"
+        >
+          {isGraphCollapsed ? <PanelLeft className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
+        </Button>
+      </header>
+
+      <MissionStatusHeader
+        agents={agents}
+        tasks={tasks}
+        lastLog={lastLog}
+        currentGoal={currentGoal}
+      />
       
       <div className="flex-1 flex overflow-hidden">
-        <div className="w-[60%] border-r flex flex-col">
-          <ChatThread
-            messages={messages}
-            artifacts={artifacts}
-            onSend={handleChatSend}
-            onViewArtifact={handleViewArtifact}
-            isLoading={isLoading}
-          />
-        </div>
-
-        <div className="w-[40%] flex flex-col">
+        <div className={cn(
+          'flex flex-col border-r transition-all duration-300',
+          isGraphCollapsed ? 'w-0 opacity-0 overflow-hidden' : 'w-[50%]'
+        )}>
           <div className="flex-1 overflow-hidden">
             <AgentCanvas
               agents={agents}
@@ -92,14 +139,31 @@ export function MainLayout() {
           </div>
           
           {selectedAgent && (
-            <ScrollArea className="border-t max-h-[50%]">
-              <SteeringControls
-                agent={selectedAgent}
-                onSteeringChange={handleSteeringChange}
-                onToolToggle={handleToolToggle}
-              />
-            </ScrollArea>
+            <div className="border-t max-h-[40%] overflow-hidden">
+              <ScrollArea className="h-full">
+                <SteeringControls
+                  agent={selectedAgent}
+                  onSteeringChange={handleSteeringChange}
+                  onToolToggle={handleToolToggle}
+                />
+              </ScrollArea>
+            </div>
           )}
+        </div>
+
+        <div className={cn(
+          'flex flex-col transition-all duration-300',
+          isGraphCollapsed ? 'w-full' : 'w-[50%]'
+        )}>
+          <div className="flex-1 overflow-hidden">
+            <ChatThread
+              messages={messages}
+              artifacts={artifacts}
+              onSend={handleChatSend}
+              onViewArtifact={handleViewArtifact}
+              isLoading={isLoading}
+            />
+          </div>
         </div>
       </div>
 

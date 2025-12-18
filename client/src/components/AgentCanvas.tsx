@@ -13,9 +13,8 @@ import {
   Position,
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Maximize2, Minimize2 } from 'lucide-react';
+import { Maximize2, Minimize2, Sparkles } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FlowAgentNode } from './FlowAgentNode';
 import { FlowArtifactNode } from './FlowArtifactNode';
@@ -135,12 +134,12 @@ export function AgentCanvas({
   }, [selectedAgentId, onSelectAgent, onSelectArtifact, artifacts]);
 
   return (
-    <Card className={cn(
-      'flex flex-col h-full',
-      isExpanded && 'fixed inset-4 z-50'
+    <div className={cn(
+      'flex flex-col h-full bg-card',
+      isExpanded && 'fixed inset-4 z-50 rounded-lg border'
     )}>
-      <CardHeader className="flex flex-row items-center justify-between gap-2 py-3 px-4">
-        <CardTitle className="text-sm">Agent Graph</CardTitle>
+      <div className="flex items-center justify-between gap-2 py-2 px-4 border-b">
+        <span className="text-sm font-semibold">Agent Graph</span>
         {onToggleExpand && (
           <Button
             data-testid="button-toggle-canvas-expand"
@@ -151,11 +150,12 @@ export function AgentCanvas({
             {isExpanded ? <Minimize2 className="w-4 h-4" /> : <Maximize2 className="w-4 h-4" />}
           </Button>
         )}
-      </CardHeader>
-      <CardContent className="flex-1 relative overflow-hidden p-0">
+      </div>
+      <div className="flex-1 relative overflow-hidden">
         {agents.length === 0 && artifacts.length === 0 ? (
-          <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
-            No agents spawned yet
+          <div className="flex flex-col items-center justify-center h-full text-muted-foreground text-sm gap-2">
+            <Sparkles className="w-8 h-8 text-primary/30" />
+            <span>Enter a mission to spawn agents</span>
           </div>
         ) : (
           <ReactFlow
@@ -181,7 +181,7 @@ export function AgentCanvas({
             />
           </ReactFlow>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 }
