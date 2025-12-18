@@ -1,0 +1,268 @@
+ou are implementing Iteration 2 of an AI agents UI/UX hackathon project.
+
+You will be given two markdown documents:
+
+Document A (Iteration 1)
+Describes the UI/UX, interaction model, and linguistic modulation layer (agents, artifacts, canvas, steering, Omni-Console).
+
+Document B (Iteration 2)
+Describes how to add a true agentic runtime on top of the existing system.
+
+These documents are complementary, not competing.
+
+Your Role
+
+You are acting as a senior full-stack engineer implementing an agent runtime.
+
+Your task is to add the missing agentic execution layer while preserving the existing UI and UX.
+
+This is a hackathon build.
+Favor clarity, determinism, and inspectability over polish.
+
+Critical Constraints (Read Carefully)
+DO NOT:
+
+Redesign the UI
+
+Rename concepts
+
+Add new metaphors
+
+Add hidden memory
+
+Add infinite loops
+
+Add background autonomy without visibility
+
+Implement speculative features not explicitly required
+
+YOU MUST:
+
+Implement exactly the primitives defined in Document B
+
+Keep execution bounded and observable
+
+Ensure the system cannot hallucinate actions
+
+Ensure all agent behavior is inspectable via the Omni-Console
+
+If something is ambiguous, default to the simplest interpretation that preserves agentic behavior.
+
+High-Level Goal
+
+Transform the existing system from:
+
+a linguistic modulation UX
+
+into:
+
+a true, bounded, inspectable agentic system
+
+without expanding scope.
+
+Required Architecture (Non-Negotiable)
+
+You must implement the following four primitives exactly as described in Document B:
+
+1. Task Objects
+
+Tasks are the primary drivers of execution.
+
+Tasks are created from the “God Mode” user input
+
+Agents execute tasks autonomously
+
+Tasks have explicit lifecycle states
+
+2. Agent Runtime Loop
+
+Each agent must run a bounded execution loop:
+
+Max iterations: 3–5
+
+Deterministic termination
+
+Loop state visible to UI
+
+3. Decision Phase (LLM as Policy)
+
+Every loop iteration begins with a decision step:
+
+Decision output MUST be valid JSON
+
+No free-form text
+
+The decision determines the next action
+
+4. Tool Registry
+
+Agents may select tools via the decision phase.
+
+Tools may be mocked
+
+Tool availability is controlled by UI toggles
+
+Tool usage must be explicit and logged
+
+Implementation Instructions (Step-by-Step)
+Step 1 — State Stores
+
+Implement global stores for:
+
+Agents
+
+Tasks
+
+Artifacts
+
+All execution logic must reference these stores.
+
+Step 2 — Task Creation
+
+When the user submits a high-level request:
+
+Create agents (already implemented in Iteration 1)
+
+Create at least one Task per agent
+
+Assign tasks explicitly
+
+Tasks must exist before any agent runs.
+
+Step 3 — Agent Runner
+
+Each agent must expose a function similar to:
+
+runAgent(agentId)
+
+
+This function:
+
+Pulls the agent’s active task
+
+Executes the runtime loop
+
+Emits status updates for UI consumption
+
+Agents run asynchronously but remain bounded.
+
+Step 4 — Decision Phase
+
+Before generating any output:
+
+Build the Decision Prompt
+
+Call the LLM
+
+Parse strict JSON
+
+Branch logic based on the selected action
+
+Decision prompts must incorporate:
+
+Task goal
+
+Existing artifacts
+
+Tool availability
+
+UI steering values (as policy bias)
+
+Step 5 — Action Execution
+
+Based on the decision:
+
+analyze: internal reasoning only
+
+use_tool: call selected tool
+
+create_artifact: generate output and spawn Artifact Node
+
+complete_task: mark task done and exit loop
+
+Artifacts must:
+
+Be rendered on the canvas
+
+Be linked to their originating task
+
+Step 6 — Visibility & Debugging
+
+Every loop iteration must emit:
+
+Decision JSON
+
+Action taken
+
+Artifacts created (if any)
+
+This data must feed directly into:
+
+Omni-Console → Live Stream
+
+Omni-Console → Context Inspector
+
+No hidden steps.
+
+UX Scope Rules (Very Important)
+
+For this iteration:
+
+Implement one shared context (no multiple membranes)
+
+Use minimal steering controls (global or per-agent)
+
+Prioritize execution clarity over visual polish
+
+The UI should feel calmer, not busier.
+
+Termination Rules
+
+An agent MUST stop execution when:
+
+Task success criteria is met
+
+Max iterations reached
+
+Task is marked failed
+
+No infinite loops.
+No background execution without visibility.
+
+Quality Bar
+
+The final system must make it obvious to a judge that:
+
+Agents are deciding actions
+
+Tasks drive execution
+
+UI controls affect behavior, not just phrasing
+
+Artifacts are causal outputs, not decorations
+
+If a judge can say “this is just prompting with a UI”, the implementation has failed.
+
+Final Instruction
+
+Proceed step by step.
+Implement only what is required.
+Do not infer additional features.
+
+When in doubt:
+
+Prefer bounded, inspectable behavior over cleverness.
+
+Execute.
+
+If you want next, I can:
+
+Compress this into a one-screen Replit system prompt
+
+Produce a “judge demo path” script
+
+Or create a failure checklist to avoid last-hour mistakes
+
+But this prompt, as written, is strong, clear, and aligned with your actual goal.
+
+Is this conversation helpful so far?
