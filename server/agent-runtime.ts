@@ -1,4 +1,5 @@
 import { GoogleGenAI } from "@google/genai";
+import { randomUUID } from 'crypto';
 
 const genAI = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY! });
 
@@ -91,12 +92,12 @@ const TOOL_DEFINITIONS = {
 };
 
 export async function executeToolMock(
-  toolName: string, 
+  toolName: string,
   input: Record<string, unknown>,
   artifacts?: Map<string, Artifact>
 ): Promise<string> {
   await new Promise(r => setTimeout(r, 500 + Math.random() * 1000));
-  
+
   switch (toolName) {
     case 'web_search':
       return JSON.stringify({
@@ -131,7 +132,7 @@ export async function executeToolMock(
       const artifact = Array.from(artifacts.values()).find(a => a.name === filename);
       if (!artifact) {
         const available = Array.from(artifacts.values()).map(a => a.name).join(', ');
-        return JSON.stringify({ 
+        return JSON.stringify({
           error: `File "${filename}" not found`,
           availableFiles: available || 'No files available'
         });
@@ -157,14 +158,14 @@ export async function getAgentDecision(
 ): Promise<AgentDecision> {
   const enabledTools = agent.enabledTools || agent.tools;
   const availableTools = enabledTools.map(t => TOOL_DEFINITIONS[t as keyof typeof TOOL_DEFINITIONS]).filter(Boolean);
-  
+
   const steeringContext = `
 Steering parameters (0-1 scale):
 - Autonomy (X): ${agent.steeringX.toFixed(2)} (${agent.steeringX < 0.3 ? 'low - ask for guidance often' : agent.steeringX > 0.7 ? 'high - work independently' : 'medium - balance guidance and autonomy'})
 - Speed vs Quality (Y): ${agent.steeringY.toFixed(2)} (${agent.steeringY < 0.3 ? 'prioritize speed' : agent.steeringY > 0.7 ? 'prioritize thoroughness' : 'balanced'})
 `;
 
-  const loopContext = isLoopMode 
+  const loopContext = isLoopMode
     ? `\n\nMODE: SCHEDULED RECURRING TASK
 You are in a scheduled task that runs periodically.
 - Complete your work thoroughly each cycle - you'll run again later
@@ -179,8 +180,8 @@ Use action "complete" when done.
 
   // Special handling for coordinator agent
   const isCoordinator = agent.name === 'Coordinator';
-  
-  const prompt = isCoordinator 
+
+  const prompt = isCoordinator
     ? `You are the Coordinator, the ONLY agent that handles user chat messages.
 
 User question: ${task.goal.replace('Answer user question: ', '')}
@@ -252,10 +253,10 @@ Important:
     });
 
     const text = response.text || '';
-    
+
     // Try to extract and parse JSON with multiple strategies
     let decision: AgentDecision;
-    
+
     try {
       // Strategy 1: Direct parse if already clean JSON
       decision = JSON.parse(text) as AgentDecision;
@@ -266,7 +267,7 @@ Important:
         if (!jsonMatch) {
           throw new Error('No JSON found in response');
         }
-        
+
         // Clean up common escape issues before parsing
         let cleanJson = jsonMatch[0]
           // Fix unescaped quotes in strings
@@ -275,14 +276,14 @@ Important:
           .replace(/([^\\])\n/g, '$1\\n')
           // Fix unescaped backslashes
           .replace(/([^\\])\\([^"\\nrtbf/u])/g, '$1\\\\$2');
-        
+
         decision = JSON.parse(cleanJson) as AgentDecision;
       } catch {
         // Strategy 3: Fallback - try to extract key fields manually
         const actionMatch = text.match(/"action"\s*:\s*"([^"]+)"/);
         const messageMatch = text.match(/"message"\s*:\s*"([^"]*?)(?<!\\)"/);
         const reasonMatch = text.match(/"reason"\s*:\s*"([^"]*?)(?<!\\)"/);
-        
+
         decision = {
           action: (actionMatch?.[1] || 'complete') as AgentDecision['action'],
           message: messageMatch?.[1] || 'Task completed',
@@ -290,13 +291,35 @@ Important:
         };
       }
     }
-    
+
     const promptTokens = Math.ceil(prompt.length / 4);
     const responseTokens = Math.ceil(text.length / 4);
     agent.tokenCount = (agent.tokenCount || 0) + promptTokens + responseTokens;
     const costPerToken = 0.000001;
     agent.costSpent = (agent.costSpent || 0) + (promptTokens + responseTokens) * costPerToken;
-    
+
+    // Added handling for 'create_artifact' action to properly escape content
+    if (decision.action === 'create_artifact' && decision.artifactName) {
+      // Ensure artifact content is properly handled, especially for JSON
+      let artifactContent = decision.artifactContent || '';
+
+      // If the artifact type is JSON and content is already an object, stringify it properly
+      if (decision.artifactType === 'json' && typeof decision.artifactContent === 'object') {
+        artifactContent = JSON.stringify(decision.artifactContent, null, 2);
+      }
+
+      const artifact: Artifact = {
+        id: randomUUID(),
+        name: decision.artifactName,
+        type: decision.artifactType || 'text',
+        content: artifactContent,
+        createdBy: agent.name,
+        createdAt: new Date(),
+      };
+      missionState.artifacts.set(artifact.id, artifact);
+    }
+
+
     return decision;
   } catch (error) {
     console.error('Gemini API error:', error);
@@ -350,9 +373,9 @@ Keep it focused - maximum 3 agents, 1-2 tasks per agent. Match tools to agent pu
     if (!jsonMatch) {
       throw new Error('No JSON found in response');
     }
-    
+
     const plan = JSON.parse(jsonMatch[0]);
-    
+
     const agents: Omit<Agent, 'id'>[] = plan.agents.map((a: { name: string; description: string; tools: string[] }, i: number) => {
       const validTools = a.tools.filter((t: string) => ['web_search', 'analyze_data', 'code_writer'].includes(t));
       return {
