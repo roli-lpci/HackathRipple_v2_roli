@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import {
   Dialog,
@@ -10,6 +9,7 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Sparkles, MessageSquare, Network, Sliders, Terminal } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 
 export function TutorialDialog() {
   const [isOpen, setIsOpen] = useState(false);
