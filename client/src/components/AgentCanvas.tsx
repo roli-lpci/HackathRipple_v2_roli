@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useEffect } from 'react';
+import { useCallback, useMemo, useEffect, useState } from 'react';
 import {
   ReactFlow,
   Background,
@@ -14,10 +14,11 @@ import {
 } from '@xyflow/react';
 import '@xyflow/react/dist/style.css';
 import { Button } from '@/components/ui/button';
-import { Maximize2, Minimize2, Sparkles } from 'lucide-react';
+import { Maximize2, Minimize2, Sparkles, Plus } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { FlowAgentNode } from './FlowAgentNode';
 import { FlowArtifactNode } from './FlowArtifactNode';
+import { AddAgentDialog } from './AddAgentDialog';
 import type { Agent, Artifact } from '@/stores/agentStore';
 
 interface AgentCanvasProps {
@@ -27,6 +28,12 @@ interface AgentCanvasProps {
   onSelectAgent: (id: string | null) => void;
   onSelectArtifact?: (artifact: Artifact) => void;
   onRerunAgent?: (agentId: string) => void;
+  onAddAgent?: (agent: {
+    name: string;
+    description: string;
+    tools: string[];
+    position: { x: number; y: number };
+  }) => void;
   isExpanded?: boolean;
   onToggleExpand?: () => void;
 }
@@ -43,9 +50,11 @@ export function AgentCanvas({
   onSelectAgent,
   onSelectArtifact,
   onRerunAgent,
+  onAddAgent,
   isExpanded = false,
   onToggleExpand,
 }: AgentCanvasProps) {
+  const [isAddAgentDialogOpen, setIsAddAgentDialogOpen] = useState(false);
   const initialNodes = useMemo(() => {
     const agentNodes: Node[] = agents.map((agent, index) => ({
       id: agent.id,
@@ -193,6 +202,25 @@ export function AgentCanvas({
               }}
             />
           </ReactFlow>
+        )}
+        
+        {onAddAgent && (
+          <Button
+            size="icon"
+            className="absolute bottom-4 right-4 h-12 w-12 rounded-full shadow-lg"
+            onClick={() => setIsAddAgentDialogOpen(true)}
+            data-testid="button-add-agent"
+          >
+            <Plus className="w-6 h-6" />
+          </Button>
+        )}
+        
+        {onAddAgent && (
+          <AddAgentDialog
+            open={isAddAgentDialogOpen}
+            onOpenChange={setIsAddAgentDialogOpen}
+            onAddAgent={onAddAgent}
+          />
         )}
       </div>
     </div>

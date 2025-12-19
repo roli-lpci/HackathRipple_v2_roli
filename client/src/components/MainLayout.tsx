@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge';
 import { useAgentStore } from '@/stores/agentStore';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { cn } from '@/lib/utils';
-import type { Artifact } from '@/stores/agentStore';
+import type { Artifact, Agent } from '@/stores/agentStore';
 import { TutorialDialog } from './TutorialDialog';
 
 export function MainLayout() {
@@ -30,6 +30,9 @@ export function MainLayout() {
     selectAgent,
     toggleConsole,
     clearExecutionLogs,
+    addArtifact,
+    addAgent,
+    addMessage,
   } = useAgentStore();
 
   const { sendGodMode, sendChat, updateSteering, toggleTool, rerunAgent, scheduleTask, cancelSchedule } = useWebSocket();
@@ -94,6 +97,85 @@ export function MainLayout() {
   const handleToggleMode = () => {
     setIsAdvancedMode(!isAdvancedMode);
   };
+
+  const handleRerunAgent = async (agentId: string) => {
+    const agent = agents.find(a => a.id === agentId);
+    if (!agent) return;
+
+    updateAgent(agentId, { 
+      status: 'working',
+      lastAppliedSteeringX: agent.steeringX,
+      lastAppliedSteeringY: agent.steeringY,
+    });
+
+    try {
+      const response = await fetch('/api/agent/rerun', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          agentId,
+          steeringX: agent.steeringX,
+          steeringY: agent.steeringY,
+          enabledTools: agent.enabledTools,
+        }),
+      });
+
+      if (!response.ok) throw new Error('Failed to rerun agent');
+
+      const result = await response.json();
+
+      updateAgent(agentId, { 
+        status: 'complete',
+        tokenCount: result.tokenCount || agent.tokenCount,
+        costSpent: result.costSpent || agent.costSpent,
+      });
+
+      if (result.artifact) {
+        addArtifact({
+          id: `artifact-${Date.now()}`,
+          name: result.artifact.name,
+          type: result.artifact.type,
+          content: result.artifact.content,
+          createdBy: agent.name,
+          createdAt: new Date(),
+        });
+      }
+    } catch (error) {
+      console.error('Failed to rerun agent:', error);
+      updateAgent(agentId, { status: 'error' });
+    }
+  };
+
+  const handleAddAgent = (agentData: {
+    name: string;
+    description: string;
+    tools: string[];
+    position: { x: number; y: number };
+  }) => {
+    const newAgent: Agent = {
+      id: `agent-${Date.now()}`,
+      name: agentData.name,
+      description: agentData.description,
+      status: 'idle',
+      position: agentData.position,
+      steeringX: 0.5,
+      steeringY: 0.5,
+      tools: agentData.tools,
+      enabledTools: agentData.tools,
+      tokenCount: 0,
+      costSpent: 0,
+    };
+
+    addAgent(newAgent);
+
+    addMessage({
+      id: `msg-${Date.now()}`,
+      role: 'system',
+      content: `New agent "${agentData.name}" added to the system.`,
+      timestamp: new Date(),
+    });
+  };
+
 
   return (
     <div className="flex flex-col h-screen bg-background">
@@ -178,7 +260,7 @@ export function MainLayout() {
             className="w-20 h-8"
           />
           <span className="text-sm text-muted-foreground">minutes</span>
-          
+
           {!schedule.isActive ? (
             <Button
               data-testid="button-start-schedule"
@@ -203,7 +285,7 @@ export function MainLayout() {
               Stop
             </Button>
           )}
-          
+
           {schedule.isActive && (
             <div className="flex items-center gap-2 ml-auto">
               <div className="w-2 h-2 bg-chart-1 rounded-full animate-pulse" />
@@ -233,7 +315,8 @@ export function MainLayout() {
                 selectedAgentId={selectedAgentId}
                 onSelectAgent={selectAgent}
                 onSelectArtifact={handleViewArtifact}
-                onRerunAgent={rerunAgent}
+                onRerunAgent={handleRerunAgent}
+                onAddAgent={handleAddAgent}
                 isExpanded={isCanvasExpanded}
                 onToggleExpand={() => setIsCanvasExpanded(!isCanvasExpanded)}
               />
