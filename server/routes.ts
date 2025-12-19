@@ -31,6 +31,68 @@ const missionState: MissionState = {
   taskAgentMap: new Map(),
 };
 
+const scheduledTasks = new Map<string, NodeJS.Timeout>();
+
+function scheduleTask(wss: WebSocketServer, task: Task, agent: Agent) {
+  if (task.runIntervalMinutes && task.runIntervalMinutes > 0) {
+    const intervalMs = task.runIntervalMinutes * 60 * 1000;
+    
+    const runTask = async () => {
+      if (agent.status === 'working') {
+        console.log(`Skipping scheduled run - agent ${agent.name} is busy`);
+        return;
+      }
+      
+      task.iterationCount = 0;
+      task.status = 'pending';
+      task.outputs = [];
+      broadcast(wss, 'task_update', task);
+      
+      broadcast(wss, 'message', {
+        id: randomUUID(),
+        role: 'system',
+        content: `Running scheduled task: ${task.goal}`,
+        timestamp: new Date(),
+      });
+      
+      await runAgentLoop(wss, agent, task);
+    };
+    
+    const intervalId = setInterval(runTask, intervalMs);
+    scheduledTasks.set(task.id, intervalId);
+    
+    broadcast(wss, 'message', {
+      id: randomUUID(),
+      role: 'system',
+      content: `Scheduled task "${task.goal}" to run every ${task.runIntervalMinutes} minute(s)`,
+      timestamp: new Date(),
+    });
+  } else if (task.scheduledStartTime) {
+    const delay = new Date(task.scheduledStartTime).getTime() - Date.now();
+    
+    if (delay > 0) {
+      broadcast(wss, 'message', {
+        id: randomUUID(),
+        role: 'system',
+        content: `Task "${task.goal}" scheduled to start in ${Math.round(delay / 1000)}s`,
+        timestamp: new Date(),
+      });
+      
+      const timeoutId = setTimeout(async () => {
+        broadcast(wss, 'message', {
+          id: randomUUID(),
+          role: 'system',
+          content: `Starting scheduled task: ${task.goal}`,
+          timestamp: new Date(),
+        });
+        await runAgentLoop(wss, agent, task);
+      }, delay);
+      
+      scheduledTasks.set(task.id, timeoutId);
+    }
+  }
+}
+
 function broadcast(wss: WebSocketServer, type: string, payload: unknown) {
   const message = JSON.stringify({ type, payload });
   wss.clients.forEach((client) => {
@@ -63,9 +125,17 @@ async function runAgentLoop(
   broadcast(wss, 'agent_update', agent);
 
   task.status = 'active';
+  task.startedAt = new Date();
+  task.lastRunAt = new Date();
   broadcast(wss, 'task_update', task);
 
-  while (task.iterationCount < task.maxIterations && task.status === 'active') {
+  const checkTimeLimit = () => {
+    if (!task.maxDurationSeconds || !task.startedAt) return false;
+    const elapsed = (Date.now() - new Date(task.startedAt).getTime()) / 1000;
+    return elapsed >= task.maxDurationSeconds;
+  };
+
+  while (task.iterationCount < task.maxIterations && task.status === 'active' && !checkTimeLimit()) {
     task.iterationCount++;
     broadcast(wss, 'task_update', task);
 
@@ -172,7 +242,22 @@ async function runAgentLoop(
     }
   }
 
-  if (task.iterationCount >= task.maxIterations && task.status === 'active') {
+  if (checkTimeLimit() && task.status === 'active') {
+    task.status = 'done';
+    const elapsed = task.startedAt ? (Date.now() - new Date(task.startedAt).getTime()) / 1000 : 0;
+    addLog(wss, {
+      agentId: agent.id,
+      agentName: agent.name,
+      type: 'complete',
+      data: { reason: 'max_duration_reached', durationSeconds: Math.round(elapsed) },
+    });
+    broadcast(wss, 'message', {
+      id: randomUUID(),
+      role: 'system',
+      content: `${agent.name} completed after ${Math.round(elapsed)}s (time limit reached)`,
+      timestamp: new Date(),
+    });
+  } else if (task.iterationCount >= task.maxIterations && task.status === 'active') {
     task.status = 'done';
     addLog(wss, {
       agentId: agent.id,
@@ -311,7 +396,12 @@ export async function registerRoutes(
               agent.lastAppliedSteeringX = agent.steeringX;
               agent.lastAppliedSteeringY = agent.steeringY;
               broadcast(wss, 'agent_update', agent);
-              await runAgentLoop(wss, agent, task);
+              
+              if (task.scheduledStartTime || task.runIntervalMinutes) {
+                scheduleTask(wss, task, agent);
+              } else {
+                await runAgentLoop(wss, agent, task);
+              }
             }
           }
 
@@ -415,7 +505,33 @@ export async function registerRoutes(
             agent.status = 'complete';
             broadcast(wss, 'agent_update', agent);
           }
+        } else if (message.type === 'cancel_task') {
+          const { taskId } = message.payload;
+          const task = missionState.tasks.get(taskId);
+          if (task) {
+            task.status = 'failed';
+            broadcast(wss, 'task_update', task);
+            
+            const scheduledJob = scheduledTasks.get(taskId);
+            if (scheduledJob) {
+              clearInterval(scheduledJob);
+              clearTimeout(scheduledJob);
+              scheduledTasks.delete(taskId);
+              broadcast(wss, 'message', {
+                id: randomUUID(),
+                role: 'system',
+                content: `Cancelled scheduled task: ${task.goal}`,
+                timestamp: new Date(),
+              });
+            }
+          }
         } else if (message.type === 'reset') {
+          scheduledTasks.forEach(job => {
+            clearInterval(job);
+            clearTimeout(job);
+          });
+          scheduledTasks.clear();
+          
           missionState.agents.clear();
           missionState.tasks.clear();
           missionState.artifacts.clear();

@@ -29,6 +29,12 @@ export interface Task {
   outputs: string[];
   successCriteria: string;
   iterationCount: number;
+  maxIterations: number;
+  maxDurationSeconds?: number;
+  startedAt?: Date;
+  scheduledStartTime?: Date;
+  runIntervalMinutes?: number;
+  lastRunAt?: Date;
 }
 
 export interface Artifact {

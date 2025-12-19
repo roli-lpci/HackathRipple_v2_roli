@@ -218,22 +218,24 @@ export function SteeringControls({ agent, onSteeringChange, onToolToggle, onReru
 
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Constraints</CardTitle>
+          <CardTitle className="text-sm">Time Constraints</CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
           <div>
             <div className="flex justify-between mb-2">
-              <Label className="text-xs">Recursion Depth</Label>
-              <span className="text-xs font-mono text-muted-foreground">3</span>
+              <Label className="text-xs">Max Duration (minutes)</Label>
+              <span className="text-xs font-mono text-muted-foreground">15 min</span>
             </div>
-            <Slider data-testid="slider-recursion" defaultValue={[3]} max={10} step={1} />
+            <Slider data-testid="slider-duration" defaultValue={[15]} max={60} step={1} />
+            <p className="text-xs text-muted-foreground mt-1">Agent will stop after this time</p>
           </div>
           <div>
             <div className="flex justify-between mb-2">
-              <Label className="text-xs">Safety Level</Label>
-              <span className="text-xs font-mono text-muted-foreground">High</span>
+              <Label className="text-xs">Run Every (minutes)</Label>
+              <span className="text-xs font-mono text-muted-foreground">Off</span>
             </div>
-            <Slider data-testid="slider-safety" defaultValue={[80]} max={100} step={10} />
+            <Slider data-testid="slider-interval" defaultValue={[0]} max={60} step={5} />
+            <p className="text-xs text-muted-foreground mt-1">0 = one-time execution</p>
           </div>
         </CardContent>
       </Card>

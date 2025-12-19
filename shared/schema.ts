@@ -16,3 +16,28 @@ export const insertUserSchema = createInsertSchema(users).pick({
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+
+export enum TaskStatus {
+  PENDING = "pending",
+  RUNNING = "running",
+  COMPLETED = "completed",
+  FAILED = "failed",
+  SCHEDULED = "scheduled",
+}
+
+export interface Task {
+  id: string;
+  goal: string;
+  status: TaskStatus;
+  assignedAgentId: string;
+  inputs: string[];
+  outputs: string[];
+  successCriteria: string;
+  iterationCount: number;
+  maxIterations: number;
+  maxDurationSeconds?: number;
+  startedAt?: Date;
+  scheduledStartTime?: Date;
+  runIntervalMinutes?: number;
+  lastRunAt?: Date;
+}
