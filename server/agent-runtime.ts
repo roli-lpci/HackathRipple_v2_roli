@@ -20,11 +20,6 @@ export interface Agent {
   tokenCount: number;
   costSpent: number;
   currentTaskId?: string;
-  memory: string[];
-  axisLabels?: {
-    xLabel: { min: string; max: string };
-    yLabel: { min: string; max: string };
-  };
 }
 
 export interface Task {
@@ -91,56 +86,6 @@ const TOOL_DEFINITIONS = {
     parameters: { filename: 'string' },
   },
 };
-
-function getAxisLabelsForAgent(name: string, description: string, tools: string[]): {
-  xLabel: { min: string; max: string };
-  yLabel: { min: string; max: string };
-} {
-  const nameLower = name.toLowerCase();
-  const descLower = description.toLowerCase();
-  
-  // Match based on agent role
-  if (nameLower.includes('writer') || nameLower.includes('author') || descLower.includes('write')) {
-    return {
-      xLabel: { min: 'Concise', max: 'Detailed' },
-      yLabel: { min: 'Formal', max: 'Casual' },
-    };
-  }
-  
-  if (nameLower.includes('analyst') || nameLower.includes('research') || descLower.includes('analyz')) {
-    return {
-      xLabel: { min: 'Summary', max: 'Deep Dive' },
-      yLabel: { min: 'Factual', max: 'Speculative' },
-    };
-  }
-  
-  if (nameLower.includes('scraper') || nameLower.includes('collector') || tools.includes('web_search')) {
-    return {
-      xLabel: { min: 'Broad', max: 'Specific' },
-      yLabel: { min: 'Quick Scan', max: 'Thorough' },
-    };
-  }
-  
-  if (nameLower.includes('code') || nameLower.includes('developer') || tools.includes('code_writer')) {
-    return {
-      xLabel: { min: 'Simple', max: 'Complex' },
-      yLabel: { min: 'Pragmatic', max: 'Optimized' },
-    };
-  }
-  
-  if (nameLower.includes('coordinator') || nameLower.includes('orchestrator')) {
-    return {
-      xLabel: { min: 'Direct', max: 'Contextual' },
-      yLabel: { min: 'Terse', max: 'Explanatory' },
-    };
-  }
-  
-  // Default fallback
-  return {
-    xLabel: { min: 'Concise', max: 'Detailed' },
-    yLabel: { min: 'Factual', max: 'Creative' },
-  };
-}
 
 export async function executeToolMock(
   toolName: string, 
@@ -218,17 +163,13 @@ Steering parameters (0-1 scale):
   // Special handling for coordinator agent
   const isCoordinator = agent.name === 'Coordinator';
   
-  const memoryContext = agent.memory && agent.memory.length > 0 
-    ? `\n\nPrevious conversation history:\n${agent.memory.slice(-5).join('\n---\n')}`
-    : '';
-
   const prompt = isCoordinator 
     ? `You are the Coordinator, the ONLY agent that handles user chat messages.
 
 User question: ${task.goal.replace('Answer user question: ', '')}
 
 Current mission context: ${context || 'No active mission'}
-Available artifacts: ${previousResults.length > 0 ? previousResults.join(', ') : 'None'}${memoryContext}
+Available artifacts: ${previousResults.length > 0 ? previousResults.join(', ') : 'None'}
 
 Your role:
 - Answer ALL user questions conversationally
@@ -262,7 +203,7 @@ Context from user:
 ${context}
 
 Previous results from this task:
-${previousResults.length > 0 ? previousResults.join('\n---\n') : 'None yet'}${memoryContext}
+${previousResults.length > 0 ? previousResults.join('\n---\n') : 'None yet'}
 
 Based on this information, decide your next action. You MUST respond with valid JSON in this exact format:
 {
@@ -381,10 +322,6 @@ Keep it focused - maximum 3 agents, 1-2 tasks per agent. Match tools to agent pu
     
     const agents: Omit<Agent, 'id'>[] = plan.agents.map((a: { name: string; description: string; tools: string[] }, i: number) => {
       const validTools = a.tools.filter((t: string) => ['web_search', 'analyze_data', 'code_writer'].includes(t));
-      
-      // Generate dynamic axis labels based on agent type
-      const axisLabels = getAxisLabelsForAgent(a.name, a.description, validTools);
-      
       return {
         name: a.name,
         description: a.description,
@@ -396,8 +333,6 @@ Keep it focused - maximum 3 agents, 1-2 tasks per agent. Match tools to agent pu
         enabledTools: validTools,
         tokenCount: 0,
         costSpent: 0,
-        memory: [],
-        axisLabels,
       };
     });
 

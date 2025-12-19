@@ -161,8 +161,8 @@ export function SteeringControls({ agent, onSteeringChange, onToolToggle, onReru
           <XYPad
             value={{ x: agent.steeringX, y: agent.steeringY }}
             onChange={({ x, y }) => onSteeringChange(x, y)}
-            xLabel={agent.axisLabels?.xLabel || { min: 'Concise', max: 'Detailed' }}
-            yLabel={agent.axisLabels?.yLabel || { min: 'Factual', max: 'Creative' }}
+            xLabel={{ min: 'Concise', max: 'Detailed' }}
+            yLabel={{ min: 'Factual', max: 'Creative' }}
           />
           <p className="text-xs text-muted-foreground text-center">
             X: {(agent.steeringX * 100).toFixed(0)}% | Y: {(agent.steeringY * 100).toFixed(0)}%

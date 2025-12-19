@@ -18,12 +18,6 @@ export interface Agent {
   enabledTools: string[];
   tokenCount: number;
   costSpent: number;
-  currentTaskId?: string;
-  memory?: string[];
-  axisLabels?: {
-    xLabel: { min: string; max: string };
-    yLabel: { min: string; max: string };
-  };
 }
 
 export interface Task {
@@ -90,30 +84,30 @@ interface AgentStore {
   selectedAgentId: string | null;
   isConsoleOpen: boolean;
   schedule: ScheduleState;
-
+  
   addAgent: (agent: Agent) => void;
   updateAgent: (id: string, updates: Partial<Agent>) => void;
   removeAgent: (id: string) => void;
   selectAgent: (id: string | null) => void;
-
+  
   addTask: (task: Task) => void;
   updateTask: (id: string, updates: Partial<Task>) => void;
-
+  
   addArtifact: (artifact: Artifact) => void;
-
+  
   addMessage: (message: Message) => void;
   clearMessages: () => void;
-
+  
   addExecutionLog: (log: ExecutionLog) => void;
   clearExecutionLogs: () => void;
-
+  
   addSteeringProfile: (profile: SteeringProfile) => void;
   removeSteeringProfile: (id: string) => void;
-
+  
   toggleConsole: () => void;
-
+  
   updateSchedule: (schedule: Partial<ScheduleState>) => void;
-
+  
   reset: () => void;
 }
 
@@ -134,7 +128,7 @@ export const useAgentStore = create<AgentStore>((set) => ({
   selectedAgentId: null,
   isConsoleOpen: false,
   schedule: { isActive: false, goal: '', intervalMinutes: 1, runCount: 0 },
-
+  
   addAgent: (agent) => set((state) => ({ agents: [...state.agents, agent] })),
   updateAgent: (id, updates) => set((state) => ({
     agents: state.agents.map((a) => a.id === id ? { ...a, ...updates } : a)
@@ -143,33 +137,33 @@ export const useAgentStore = create<AgentStore>((set) => ({
     agents: state.agents.filter((a) => a.id !== id)
   })),
   selectAgent: (id) => set({ selectedAgentId: id }),
-
+  
   addTask: (task) => set((state) => ({ tasks: [...state.tasks, task] })),
   updateTask: (id, updates) => set((state) => ({
     tasks: state.tasks.map((t) => t.id === id ? { ...t, ...updates } : t)
   })),
-
+  
   addArtifact: (artifact) => set((state) => ({ artifacts: [...state.artifacts, artifact] })),
-
+  
   addMessage: (message) => set((state) => ({ messages: [...state.messages, message] })),
   clearMessages: () => set({ messages: [] }),
-
+  
   addExecutionLog: (log) => set((state) => ({ executionLogs: [...state.executionLogs, log] })),
   clearExecutionLogs: () => set({ executionLogs: [] }),
-
+  
   addSteeringProfile: (profile) => set((state) => ({ 
     steeringProfiles: [...state.steeringProfiles, profile] 
   })),
   removeSteeringProfile: (id) => set((state) => ({ 
     steeringProfiles: state.steeringProfiles.filter(p => p.id !== id) 
   })),
-
+  
   toggleConsole: () => set((state) => ({ isConsoleOpen: !state.isConsoleOpen })),
-
+  
   updateSchedule: (schedule) => set((state) => ({
     schedule: { ...state.schedule, ...schedule }
   })),
-
+  
   reset: () => set({
     agents: [],
     tasks: [],
