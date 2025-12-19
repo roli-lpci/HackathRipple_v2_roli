@@ -17,6 +17,7 @@ interface SteeringControlsProps {
   onSteeringChange: (x: number, y: number) => void;
   onToolToggle?: (tool: string, enabled: boolean) => void;
   onRerun?: (agentId: string, maxDurationSeconds?: number, runIntervalMinutes?: number) => void;
+  updateSteering?: (agentId: string, x: number, y: number) => void;
 }
 
 const toolIcons: Record<string, typeof Search> = {
@@ -25,7 +26,7 @@ const toolIcons: Record<string, typeof Search> = {
   analyze_data: Database,
 };
 
-export function SteeringControls({ agent, onSteeringChange, onToolToggle, onRerun }: SteeringControlsProps) {
+export function SteeringControls({ agent, onSteeringChange, onToolToggle, onRerun, updateSteering }: SteeringControlsProps) {
   const { steeringProfiles, addSteeringProfile } = useAgentStore();
   const [savingProfile, setSavingProfile] = useState(false);
   const [maxDuration, setMaxDuration] = useState(15);
@@ -170,25 +171,42 @@ export function SteeringControls({ agent, onSteeringChange, onToolToggle, onReru
             X: {(agent.steeringX * 100).toFixed(0)}% | Y: {(agent.steeringY * 100).toFixed(0)}%
           </p>
           
-          <Button
-            data-testid="button-rerun-agent"
-            onClick={() => onRerun?.(agent.id, maxDuration * 60, runInterval > 0 ? runInterval : undefined)}
-            disabled={agent.status === 'working'}
-            className="w-full gap-2"
-            variant={agent.status === 'complete' ? 'default' : 'secondary'}
-          >
-            {agent.status === 'working' ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Running...
-              </>
-            ) : (
-              <>
-                <RotateCcw className="w-4 h-4" />
-                Apply & Re-run
-              </>
-            )}
-          </Button>
+          <div className="w-full flex gap-2">
+            <Button
+              data-testid="button-apply-next"
+              onClick={() => {
+                // Just update steering values locally for next run
+                if (agent.id) {
+                  updateSteering(agent.id, agent.steeringX, agent.steeringY);
+                }
+              }}
+              disabled={agent.status === 'working' || !hasPendingChanges}
+              className="flex-1 gap-2"
+              variant="outline"
+            >
+              <Save className="w-4 h-4" />
+              Apply Next
+            </Button>
+            <Button
+              data-testid="button-rerun-agent"
+              onClick={() => onRerun?.(agent.id, maxDuration * 60, runInterval > 0 ? runInterval : undefined)}
+              disabled={agent.status === 'working'}
+              className="flex-1 gap-2"
+              variant={agent.status === 'complete' ? 'default' : 'secondary'}
+            >
+              {agent.status === 'working' ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Running...
+                </>
+              ) : (
+                <>
+                  <RotateCcw className="w-4 h-4" />
+                  Apply & Run
+                </>
+              )}
+            </Button>
+          </div>
           
           <Collapsible open={showPromptPreview} onOpenChange={setShowPromptPreview} className="w-full">
             <CollapsibleTrigger asChild>

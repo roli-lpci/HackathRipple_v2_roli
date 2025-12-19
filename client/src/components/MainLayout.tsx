@@ -185,6 +185,7 @@ export function MainLayout() {
                     onSteeringChange={handleSteeringChange}
                     onRerun={handleRerunAgent}
                     onToolToggle={handleToolToggle}
+                    updateSteering={updateSteering}
                   />
                 </ScrollArea>
               </div>

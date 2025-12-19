@@ -122,14 +122,11 @@ export function useWebSocket() {
   }, [sendMessage]);
 
   const rerunAgent = useCallback((agentId: string, maxDurationSeconds?: number, runIntervalMinutes?: number) => {
-    if (wsRef.current?.readyState === WebSocket.OPEN) {
-      wsRef.current.send(JSON.stringify({
-        type: 'rerun_agent',
-        agentId,
-        maxDurationSeconds,
-        runIntervalMinutes,
-      }));
-    }
+    sendMessage('rerun_agent', {
+      agentId,
+      maxDurationSeconds,
+      runIntervalMinutes,
+    });
   }, [sendMessage]);
 
   return {
