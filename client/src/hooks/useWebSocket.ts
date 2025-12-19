@@ -5,7 +5,7 @@ import type { Agent, Artifact, ExecutionLog, Message } from '@/stores/agentStore
 export function useWebSocket() {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
-
+  
   const {
     addAgent,
     updateAgent,
@@ -101,8 +101,8 @@ export function useWebSocket() {
     }
   }, []);
 
-  const sendGodMode = useCallback((goal: string, runIntervalMinutes?: number) => {
-    sendMessage('god_mode', { goal, runIntervalMinutes });
+  const sendGodMode = useCallback((goal: string) => {
+    sendMessage('god_mode', { goal });
   }, [sendMessage]);
 
   const sendChat = useCallback((content: string) => {

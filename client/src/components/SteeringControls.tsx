@@ -2,6 +2,8 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
+import { Slider } from '@/components/ui/slider';
+import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { XYPad } from './XYPad';
 import { Search, Code, Database, Globe, Fuel, DollarSign, RotateCcw, Loader2, Bookmark, Save, Sparkles, Eye, EyeOff } from 'lucide-react';
@@ -15,7 +17,6 @@ interface SteeringControlsProps {
   onSteeringChange: (x: number, y: number) => void;
   onToolToggle?: (tool: string, enabled: boolean) => void;
   onRerun?: (agentId: string) => void;
-  updateSteering?: (agentId: string, x: number, y: number) => void;
 }
 
 const toolIcons: Record<string, typeof Search> = {
@@ -24,7 +25,7 @@ const toolIcons: Record<string, typeof Search> = {
   analyze_data: Database,
 };
 
-export function SteeringControls({ agent, onSteeringChange, onToolToggle, onRerun, updateSteering }: SteeringControlsProps) {
+export function SteeringControls({ agent, onSteeringChange, onToolToggle, onRerun }: SteeringControlsProps) {
   const { steeringProfiles, addSteeringProfile } = useAgentStore();
   const [savingProfile, setSavingProfile] = useState(false);
   const enabledTools = agent.enabledTools || agent.tools;
@@ -167,42 +168,25 @@ export function SteeringControls({ agent, onSteeringChange, onToolToggle, onReru
             X: {(agent.steeringX * 100).toFixed(0)}% | Y: {(agent.steeringY * 100).toFixed(0)}%
           </p>
           
-          <div className="w-full flex gap-2">
-            <Button
-              data-testid="button-apply-next"
-              onClick={() => {
-                // Just update steering values locally for next run
-                if (agent.id) {
-                  updateSteering(agent.id, agent.steeringX, agent.steeringY);
-                }
-              }}
-              disabled={agent.status === 'working' || !hasPendingChanges}
-              className="flex-1 gap-2"
-              variant="outline"
-            >
-              <Save className="w-4 h-4" />
-              Apply Next
-            </Button>
-            <Button
-              data-testid="button-rerun-agent"
-              onClick={() => onRerun?.(agent.id)}
-              disabled={agent.status === 'working'}
-              className="flex-1 gap-2"
-              variant={agent.status === 'complete' ? 'default' : 'secondary'}
-            >
-              {agent.status === 'working' ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  Running...
-                </>
-              ) : (
-                <>
-                  <RotateCcw className="w-4 h-4" />
-                  Apply & Run
-                </>
-              )}
-            </Button>
-          </div>
+          <Button
+            data-testid="button-rerun-agent"
+            onClick={() => onRerun?.(agent.id)}
+            disabled={agent.status === 'working'}
+            className="w-full gap-2"
+            variant={agent.status === 'complete' ? 'default' : 'secondary'}
+          >
+            {agent.status === 'working' ? (
+              <>
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Running...
+              </>
+            ) : (
+              <>
+                <RotateCcw className="w-4 h-4" />
+                Apply & Re-run
+              </>
+            )}
+          </Button>
           
           <Collapsible open={showPromptPreview} onOpenChange={setShowPromptPreview} className="w-full">
             <CollapsibleTrigger asChild>
@@ -229,6 +213,28 @@ export function SteeringControls({ agent, onSteeringChange, onToolToggle, onReru
               )}
             </CollapsibleContent>
           </Collapsible>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm">Constraints</CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <div className="flex justify-between mb-2">
+              <Label className="text-xs">Recursion Depth</Label>
+              <span className="text-xs font-mono text-muted-foreground">3</span>
+            </div>
+            <Slider data-testid="slider-recursion" defaultValue={[3]} max={10} step={1} />
+          </div>
+          <div>
+            <div className="flex justify-between mb-2">
+              <Label className="text-xs">Safety Level</Label>
+              <span className="text-xs font-mono text-muted-foreground">High</span>
+            </div>
+            <Slider data-testid="slider-safety" defaultValue={[80]} max={100} step={10} />
+          </div>
         </CardContent>
       </Card>
 
