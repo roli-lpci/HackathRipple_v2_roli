@@ -20,6 +20,10 @@ export interface Agent {
   costSpent: number;
   currentTaskId?: string;
   memory?: string[];
+  axisLabels?: {
+    xLabel: { min: string; max: string };
+    yLabel: { min: string; max: string };
+  };
 }
 
 export interface Task {
