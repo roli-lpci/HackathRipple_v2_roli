@@ -238,9 +238,43 @@ Important:
     });
 
     const text = response.text || '';
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      throw new Error('No JSON found in response');
+    
+    // Try to extract and parse JSON with multiple strategies
+    let decision: AgentDecision;
+    
+    try {
+      // Strategy 1: Direct parse if already clean JSON
+      decision = JSON.parse(text) as AgentDecision;
+    } catch {
+      try {
+        // Strategy 2: Extract JSON object from text
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (!jsonMatch) {
+          throw new Error('No JSON found in response');
+        }
+        
+        // Clean up common escape issues before parsing
+        let cleanJson = jsonMatch[0]
+          // Fix unescaped quotes in strings
+          .replace(/([^\\])"([^"]*)"([^:])/g, '$1\\"$2\\"$3')
+          // Fix unescaped newlines
+          .replace(/([^\\])\n/g, '$1\\n')
+          // Fix unescaped backslashes
+          .replace(/([^\\])\\([^"\\nrtbf/u])/g, '$1\\\\$2');
+        
+        decision = JSON.parse(cleanJson) as AgentDecision;
+      } catch {
+        // Strategy 3: Fallback - try to extract key fields manually
+        const actionMatch = text.match(/"action"\s*:\s*"([^"]+)"/);
+        const messageMatch = text.match(/"message"\s*:\s*"([^"]*?)(?<!\\)"/);
+        const reasonMatch = text.match(/"reason"\s*:\s*"([^"]*?)(?<!\\)"/);
+        
+        decision = {
+          action: (actionMatch?.[1] || 'complete') as AgentDecision['action'],
+          message: messageMatch?.[1] || 'Task completed',
+          reason: reasonMatch?.[1] || 'Response parsing issue',
+        };
+      }
     }
     
     const promptTokens = Math.ceil(prompt.length / 4);
@@ -249,7 +283,6 @@ Important:
     const costPerToken = 0.000001;
     agent.costSpent = (agent.costSpent || 0) + (promptTokens + responseTokens) * costPerToken;
     
-    const decision = JSON.parse(jsonMatch[0]) as AgentDecision;
     return decision;
   } catch (error) {
     console.error('Gemini API error:', error);
