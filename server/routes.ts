@@ -51,13 +51,23 @@ function scheduleTask(wss: WebSocketServer, task: Task, agent: Agent) {
       broadcast(wss, 'message', {
         id: randomUUID(),
         role: 'system',
-        content: `Running scheduled task: ${task.goal}`,
+        content: `Running scheduled task: ${task.goal} (every ${task.runIntervalMinutes} min)`,
         timestamp: new Date(),
       });
       
       await runAgentLoop(wss, agent, task);
+      
+      const nextRunTime = new Date(Date.now() + intervalMs);
+      broadcast(wss, 'message', {
+        id: randomUUID(),
+        role: 'system',
+        content: `Task completed. Next run at ${nextRunTime.toLocaleTimeString()}`,
+        timestamp: new Date(),
+      });
     };
     
+    // Run immediately first, then on interval
+    runTask();
     const intervalId = setInterval(runTask, intervalMs);
     scheduledTasks.set(task.id, intervalId);
     
@@ -218,17 +228,6 @@ async function runAgentLoop(
 
       task.status = 'done';
     } else if (decision.action === 'complete') {
-      // In loop mode, ignore complete actions - only time limit stops the loop
-      if (task.runIntervalMinutes) {
-        broadcast(wss, 'message', {
-          id: randomUUID(),
-          role: 'system',
-          content: `${agent.name} attempted to complete but is in loop mode - continuing...`,
-          timestamp: new Date(),
-        });
-        continue; // Skip to next iteration
-      }
-      
       task.status = 'done';
 
       broadcast(wss, 'message', {

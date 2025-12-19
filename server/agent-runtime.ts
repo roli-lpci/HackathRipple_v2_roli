@@ -165,12 +165,12 @@ Steering parameters (0-1 scale):
 `;
 
   const loopContext = isLoopMode 
-    ? `\n\nMODE: CONTINUOUS LOOP
-You are running in continuous loop mode. Your task will automatically restart after each cycle.
-- Keep working iteratively, building on previous results
-- Create incremental artifacts with updated findings
-- DO NOT use action "complete" - the system will stop you when time runs out
-- Focus on progressive research/analysis with each iteration
+    ? `\n\nMODE: SCHEDULED RECURRING TASK
+You are in a scheduled task that runs periodically.
+- Complete your work thoroughly each cycle - you'll run again later
+- Create artifacts with your current findings
+- Use action "complete" when this cycle is done
+- Build on previous artifacts if they exist
 `
     : `\n\nMODE: SINGLE EXECUTION
 Complete the task once you've produced meaningful output.
