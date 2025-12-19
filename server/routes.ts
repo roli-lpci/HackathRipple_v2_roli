@@ -148,7 +148,8 @@ async function runAgentLoop(
 
     let decision: AgentDecision;
     try {
-      decision = await getAgentDecision(agent, task, missionState.context, previousResults);
+      const isLoopMode = !!task.runIntervalMinutes;
+      decision = await getAgentDecision(agent, task, missionState.context, previousResults, isLoopMode);
     } catch (error) {
       addLog(wss, {
         agentId: agent.id,
@@ -217,6 +218,17 @@ async function runAgentLoop(
 
       task.status = 'done';
     } else if (decision.action === 'complete') {
+      // In loop mode, ignore complete actions - only time limit stops the loop
+      if (task.runIntervalMinutes) {
+        broadcast(wss, 'message', {
+          id: randomUUID(),
+          role: 'system',
+          content: `${agent.name} attempted to complete but is in loop mode - continuing...`,
+          timestamp: new Date(),
+        });
+        continue; // Skip to next iteration
+      }
+      
       task.status = 'done';
 
       broadcast(wss, 'message', {

@@ -152,7 +152,8 @@ export async function getAgentDecision(
   agent: Agent,
   task: Task,
   context: string,
-  previousResults: string[]
+  previousResults: string[],
+  isLoopMode: boolean = false
 ): Promise<AgentDecision> {
   const enabledTools = agent.enabledTools || agent.tools;
   const availableTools = enabledTools.map(t => TOOL_DEFINITIONS[t as keyof typeof TOOL_DEFINITIONS]).filter(Boolean);
@@ -161,6 +162,19 @@ export async function getAgentDecision(
 Steering parameters (0-1 scale):
 - Autonomy (X): ${agent.steeringX.toFixed(2)} (${agent.steeringX < 0.3 ? 'low - ask for guidance often' : agent.steeringX > 0.7 ? 'high - work independently' : 'medium - balance guidance and autonomy'})
 - Speed vs Quality (Y): ${agent.steeringY.toFixed(2)} (${agent.steeringY < 0.3 ? 'prioritize speed' : agent.steeringY > 0.7 ? 'prioritize thoroughness' : 'balanced'})
+`;
+
+  const loopContext = isLoopMode 
+    ? `\n\nMODE: CONTINUOUS LOOP
+You are running in continuous loop mode. Your task will automatically restart after each cycle.
+- Keep working iteratively, building on previous results
+- Create incremental artifacts with updated findings
+- DO NOT use action "complete" - the system will stop you when time runs out
+- Focus on progressive research/analysis with each iteration
+`
+    : `\n\nMODE: SINGLE EXECUTION
+Complete the task once you've produced meaningful output.
+Use action "complete" when done.
 `;
 
   // Special handling for coordinator agent
@@ -197,7 +211,7 @@ Goal: ${task.goal}
 Success Criteria: ${task.successCriteria}
 Iteration: ${task.iterationCount + 1} of ${task.maxIterations}
 
-${steeringContext}
+${steeringContext}${loopContext}
 
 Available tools:
 ${availableTools.map(t => `- ${t.name}: ${t.description}`).join('\n')}
