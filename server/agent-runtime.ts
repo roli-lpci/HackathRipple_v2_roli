@@ -20,6 +20,7 @@ export interface Agent {
   tokenCount: number;
   costSpent: number;
   currentTaskId?: string;
+  memory: string[];
 }
 
 export interface Task {
@@ -163,13 +164,17 @@ Steering parameters (0-1 scale):
   // Special handling for coordinator agent
   const isCoordinator = agent.name === 'Coordinator';
   
+  const memoryContext = agent.memory && agent.memory.length > 0 
+    ? `\n\nPrevious conversation history:\n${agent.memory.slice(-5).join('\n---\n')}`
+    : '';
+
   const prompt = isCoordinator 
     ? `You are the Coordinator, the ONLY agent that handles user chat messages.
 
 User question: ${task.goal.replace('Answer user question: ', '')}
 
 Current mission context: ${context || 'No active mission'}
-Available artifacts: ${previousResults.length > 0 ? previousResults.join(', ') : 'None'}
+Available artifacts: ${previousResults.length > 0 ? previousResults.join(', ') : 'None'}${memoryContext}
 
 Your role:
 - Answer ALL user questions conversationally
@@ -203,7 +208,7 @@ Context from user:
 ${context}
 
 Previous results from this task:
-${previousResults.length > 0 ? previousResults.join('\n---\n') : 'None yet'}
+${previousResults.length > 0 ? previousResults.join('\n---\n') : 'None yet'}${memoryContext}
 
 Based on this information, decide your next action. You MUST respond with valid JSON in this exact format:
 {
@@ -333,6 +338,7 @@ Keep it focused - maximum 3 agents, 1-2 tasks per agent. Match tools to agent pu
         enabledTools: validTools,
         tokenCount: 0,
         costSpent: 0,
+        memory: [],
       };
     });
 

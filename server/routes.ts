@@ -27,6 +27,7 @@ interface MissionState {
   artifacts: Map<string, Artifact>;
   logs: ExecutionLog[];
   context: string;
+  userContext: string;
   taskAgentMap: Map<string, number>;
   sessionMemory: string[];
   schedule: ScheduleConfig;
@@ -38,6 +39,7 @@ const missionState: MissionState = {
   artifacts: new Map(),
   logs: [],
   context: '',
+  userContext: '',
   taskAgentMap: new Map(),
   sessionMemory: [],
   schedule: {
@@ -76,6 +78,11 @@ async function runAgentLoop(
 ) {
   const previousResults: string[] = [];
 
+  // Initialize memory if not present
+  if (!agent.memory) {
+    agent.memory = [];
+  }
+
   agent.status = 'working';
   agent.currentTaskId = task.id;
   broadcast(wss, 'agent_update', agent);
@@ -96,7 +103,7 @@ async function runAgentLoop(
 
     let decision: AgentDecision;
     try {
-      decision = await getAgentDecision(agent, task, missionState.context, previousResults);
+      decision = await getAgentDecision(agent, task, missionState.userContext, previousResults);
     } catch (error) {
       addLog(wss, {
         agentId: agent.id,
@@ -108,6 +115,10 @@ async function runAgentLoop(
       agent.status = 'error';
       break;
     }
+
+    // Store decision in memory
+    const memoryEntry = `[${new Date().toISOString()}] Decision: ${decision.action} - ${decision.reason}`;
+    agent.memory.push(memoryEntry);
 
     addLog(wss, {
       agentId: agent.id,
@@ -272,7 +283,8 @@ export async function registerRoutes(
 
         if (message.type === 'god_mode') {
           const userGoal = message.payload.goal;
-          missionState.context = userGoal;
+          missionState.userContext = userGoal; // Use userContext for god mode
+          missionState.context = userGoal; // Keep context for compatibility if needed elsewhere
 
           broadcast(wss, 'message', {
             id: randomUUID(),
@@ -341,7 +353,7 @@ export async function registerRoutes(
           });
         } else if (message.type === 'chat') {
           const userMessage = message.payload.content;
-          
+
           broadcast(wss, 'message', {
             id: randomUUID(),
             role: 'user',
@@ -427,19 +439,19 @@ export async function registerRoutes(
               maxIterations: 3,
             };
             missionState.tasks.set(task.id, task);
-            
+
             await runAgentLoop(wss, agent, task);
-            
+
             agent.status = 'complete';
             broadcast(wss, 'agent_update', agent);
           }
         } else if (message.type === 'schedule_task') {
           const { goal, intervalMinutes } = message.payload;
-          
+
           if (missionState.schedule.intervalHandle) {
             clearInterval(missionState.schedule.intervalHandle);
           }
-          
+
           missionState.schedule = {
             isActive: true,
             goal,
@@ -447,40 +459,41 @@ export async function registerRoutes(
             runCount: 0,
             intervalHandle: null,
           };
-          
+
           const runScheduledTask = async () => {
             if (!missionState.schedule.isActive) return;
-            
+
             missionState.schedule.runCount++;
             const currentRun = missionState.schedule.runCount;
-            
+
             broadcast(wss, 'schedule_update', {
               isActive: true,
               goal,
               intervalMinutes,
               runCount: currentRun,
             });
-            
+
             addLog(wss, {
               agentId: 'system',
               agentName: 'Scheduler',
               type: 'action',
               data: { action: 'scheduled_run', runNumber: currentRun, goal },
             });
-            
+
             const memoryContext = missionState.sessionMemory.length > 0
               ? `\n\nPrevious run summaries (memory):\n${missionState.sessionMemory.slice(-5).join('\n---\n')}`
               : '';
-            
+
             const contextWithMemory = `${goal}${memoryContext}`;
             missionState.context = contextWithMemory;
-            
+            missionState.userContext = goal; // Set userContext for scheduled tasks as well
+
             const { agents: agentTemplates, tasks: taskTemplates } = await decomposeGoal(goal);
-            
+
             const newAgents: Agent[] = [];
             const newTasks: Task[] = [];
             const agentIdMap = new Map<number, string>();
-            
+
             agentTemplates.forEach((template, index) => {
               const existingAgent = Array.from(missionState.agents.values()).find(a => a.name === template.name);
               if (existingAgent) {
@@ -494,7 +507,7 @@ export async function registerRoutes(
                 broadcast(wss, 'agent', agent);
               }
             });
-            
+
             taskTemplates.forEach((template, index) => {
               const task: Task = {
                 ...template,
@@ -505,7 +518,7 @@ export async function registerRoutes(
               newTasks.push(task);
               broadcast(wss, 'task', task);
             });
-            
+
             for (const task of newTasks) {
               const agent = missionState.agents.get(task.assignedAgentId);
               if (agent) {
@@ -515,10 +528,10 @@ export async function registerRoutes(
                 await runAgentLoop(wss, agent, task);
               }
             }
-            
+
             const runSummary = `Run #${currentRun} at ${new Date().toLocaleTimeString()}: Completed ${newTasks.length} task(s). Outputs: ${newTasks.map(t => t.outputs.slice(-1)[0] || 'none').join('; ')}`;
             missionState.sessionMemory.push(runSummary);
-            
+
             addLog(wss, {
               agentId: 'system',
               agentName: 'Scheduler',
@@ -526,21 +539,21 @@ export async function registerRoutes(
               data: { runNumber: currentRun, summary: runSummary },
             });
           };
-          
+
           await runScheduledTask();
-          
+
           missionState.schedule.intervalHandle = setInterval(
             runScheduledTask,
             intervalMinutes * 60 * 1000
           );
-          
+
           broadcast(wss, 'schedule_update', {
             isActive: true,
             goal,
             intervalMinutes,
             runCount: missionState.schedule.runCount,
           });
-          
+
         } else if (message.type === 'cancel_schedule') {
           if (missionState.schedule.intervalHandle) {
             clearInterval(missionState.schedule.intervalHandle);
@@ -552,21 +565,21 @@ export async function registerRoutes(
             runCount: 0,
             intervalHandle: null,
           };
-          
+
           broadcast(wss, 'schedule_update', {
             isActive: false,
             goal: '',
             intervalMinutes: 1,
             runCount: 0,
           });
-          
+
           addLog(wss, {
             agentId: 'system',
             agentName: 'Scheduler',
             type: 'action',
             data: { action: 'schedule_cancelled' },
           });
-          
+
         } else if (message.type === 'reset') {
           if (missionState.schedule.intervalHandle) {
             clearInterval(missionState.schedule.intervalHandle);
@@ -576,6 +589,7 @@ export async function registerRoutes(
           missionState.artifacts.clear();
           missionState.logs = [];
           missionState.context = '';
+          missionState.userContext = '';
           missionState.sessionMemory = [];
           missionState.schedule = {
             isActive: false,
