@@ -43,8 +43,10 @@ export function MainLayout() {
   const [commandInput, setCommandInput] = useState('');
   const [currentGoal, setCurrentGoal] = useState('');
   const [isGraphCollapsed, setIsGraphCollapsed] = useState(false);
-  const [isTutorialOpen, setIsTutorialOpen] = useState(true); // State for tutorial dialog
-  const [isAdvancedMode, setIsAdvancedMode] = useState(false); // State for mode selection
+  const [isTutorialOpen, setIsTutorialOpen] = useState(() => {
+    return !localStorage.getItem('agentsynapse_tutorial_seen');
+  });
+  const [isAdvancedMode, setIsAdvancedMode] = useState(false);
   const [scheduleIntervalInput, setScheduleIntervalInput] = useState(1);
 
   const selectedAgent = agents.find(a => a.id === selectedAgentId);
@@ -91,6 +93,7 @@ export function MainLayout() {
   };
 
   const handleCloseTutorial = () => {
+    localStorage.setItem('agentsynapse_tutorial_seen', 'true');
     setIsTutorialOpen(false);
   };
 

@@ -11,23 +11,14 @@ import {
 import { Button } from '@/components/ui/button';
 import { Sparkles, MessageSquare, Network, Sliders, Terminal } from 'lucide-react';
 
-export function TutorialDialog() {
-  const [isOpen, setIsOpen] = useState(false);
+interface TutorialDialogProps {
+  isOpen: boolean;
+  onClose: () => void;
+}
 
-  useEffect(() => {
-    const hasSeenTutorial = localStorage.getItem('agentsynapse_tutorial_seen');
-    if (!hasSeenTutorial) {
-      setIsOpen(true);
-    }
-  }, []);
-
-  const handleClose = () => {
-    localStorage.setItem('agentsynapse_tutorial_seen', 'true');
-    setIsOpen(false);
-  };
-
+export function TutorialDialog({ isOpen, onClose }: TutorialDialogProps) {
   return (
-    <Dialog open={isOpen} onOpenChange={setIsOpen}>
+    <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2 text-2xl">
@@ -101,15 +92,15 @@ export function TutorialDialog() {
           </div>
 
           <div className="bg-accent/50 rounded-lg p-4 mt-4">
-            <p className="text-sm font-medium mb-2">💡 Pro Tip</p>
-            <p className="text-xs text-muted-foreground">
+            <div className="text-sm font-medium mb-2">💡 Pro Tip</div>
+            <div className="text-xs text-muted-foreground">
               Try: "Research emerging AI trends and create a summary report" or "Build a content strategy for a sustainable fashion brand"
-            </p>
+            </div>
           </div>
         </div>
 
         <DialogFooter>
-          <Button onClick={handleClose} className="w-full">
+          <Button onClick={onClose} className="w-full">
             Got it! Let's start
           </Button>
         </DialogFooter>
