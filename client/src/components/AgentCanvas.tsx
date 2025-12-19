@@ -3,7 +3,6 @@ import {
   ReactFlow,
   Background,
   Controls,
-  MiniMap,
   useNodesState,
   useEdgesState,
   type Node,
@@ -194,13 +193,6 @@ export function AgentCanvas({
           >
             <Background color="hsl(var(--border))" gap={20} size={1} />
             <Controls className="bg-card border rounded-md" />
-            <MiniMap 
-              className="bg-card border rounded-md"
-              nodeColor={(node) => {
-                if (node.type === 'artifact') return 'hsl(var(--chart-3))';
-                return 'hsl(var(--primary))';
-              }}
-            />
           </ReactFlow>
         )}
         
