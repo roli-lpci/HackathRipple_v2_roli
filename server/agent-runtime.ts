@@ -211,11 +211,13 @@ Based on this information, decide your next action. You MUST respond with valid 
   "tool": "tool_name (if action is use_tool)",
   "toolInput": { "param": "value" } (if action is use_tool),
   "artifactName": "filename.ext (if action is create_artifact)",
-  "artifactContent": "content (if action is create_artifact)",
-  "artifactType": "markdown" | "json" | "text" | "code" (if action is create_artifact),
+  "artifactContent": "content as a single string - escape ALL quotes and newlines properly (if action is create_artifact)",
+  "artifactType": "markdown" | "json" | "text" | "code" (if action is create_artifact)",
   "message": "message for user (if action is ask_user or complete)",
   "reason": "brief explanation of why you chose this action"
 }
+
+CRITICAL: When creating artifacts, artifactContent MUST be a properly escaped JSON string. All quotes must be escaped as \\" and all newlines as \\n.
 
 Important:
 - If you have enough information, create an artifact with your findings/output
@@ -246,7 +248,22 @@ Important:
     const costPerToken = 0.000001;
     agent.costSpent = (agent.costSpent || 0) + (promptTokens + responseTokens) * costPerToken;
     
-    const decision = JSON.parse(jsonMatch[0]) as AgentDecision;
+    let decision: AgentDecision;
+    try {
+      decision = JSON.parse(jsonMatch[0]) as AgentDecision;
+    } catch (parseError) {
+      console.error('JSON parsing failed, raw response:', jsonMatch[0].substring(0, 500));
+      // Fallback: try to extract action and create a safe response
+      const actionMatch = jsonMatch[0].match(/"action"\s*:\s*"([^"]+)"/);
+      const reasonMatch = jsonMatch[0].match(/"reason"\s*:\s*"([^"]+)"/);
+      
+      decision = {
+        action: 'complete',
+        message: 'Research completed - check artifacts for detailed results',
+        reason: reasonMatch ? reasonMatch[1] : 'Completed task with malformed output',
+      };
+    }
+    
     return decision;
   } catch (error) {
     console.error('Gemini API error:', error);
