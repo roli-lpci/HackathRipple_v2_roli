@@ -101,8 +101,8 @@ export function useWebSocket() {
     }
   }, []);
 
-  const sendGodMode = useCallback((goal: string, maxDurationSeconds?: number, runIntervalMinutes?: number) => {
-    sendMessage('god_mode', { goal, maxDurationSeconds, runIntervalMinutes });
+  const sendGodMode = useCallback((goal: string, runIntervalMinutes?: number) => {
+    sendMessage('god_mode', { goal, runIntervalMinutes });
   }, [sendMessage]);
 
   const sendChat = useCallback((content: string) => {

@@ -44,7 +44,7 @@ export function MainLayout() {
   const [isGraphCollapsed, setIsGraphCollapsed] = useState(false);
   const [isTutorialOpen, setIsTutorialOpen] = useState(true); // State for tutorial dialog
   const [isAdvancedMode, setIsAdvancedMode] = useState(false); // State for mode selection
-  const [recurringTime, setRecurringTime] = useState<string>(''); // State for recurring time
+  const [recurringMinutes, setRecurringMinutes] = useState<string>(''); // State for recurring interval in minutes
 
   const selectedAgent = agents.find(a => a.id === selectedAgentId);
   const lastLog = executionLogs[executionLogs.length - 1];
@@ -53,9 +53,10 @@ export function MainLayout() {
     if (!value.trim()) return;
     setIsLoading(true);
     setCurrentGoal(value);
-    sendGodMode(value, recurringTime); // Pass recurringTime to sendGodMode
+    const intervalMinutes = recurringMinutes ? parseInt(recurringMinutes, 10) : undefined;
+    sendGodMode(value, intervalMinutes);
     setCommandInput('');
-    setRecurringTime(''); // Clear recurringTime after submission
+    setRecurringMinutes('');
     setTimeout(() => setIsLoading(false), 500);
   };
 
@@ -106,37 +107,31 @@ export function MainLayout() {
             <span className="font-semibold text-sm hidden sm:inline">Agent Synapse</span>
           </div>
 
-          {!isAdvancedMode ? (
+          <div className="flex-1 flex items-center gap-2">
             <Input
               data-testid="input-god-mode"
               value={commandInput}
               onChange={(e) => setCommandInput(e.target.value)}
               placeholder="Dream your agent team... (e.g., 'Research AI trends and write a report')"
-              className="flex-1 max-w-xl"
+              className="flex-1"
               disabled={isLoading}
             />
-          ) : (
-            <div className="flex-1 flex items-center gap-2">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground whitespace-nowrap">Run every</span>
               <Input
-                data-testid="input-god-mode-advanced"
-                value={commandInput}
-                onChange={(e) => setCommandInput(e.target.value)}
-                placeholder="Detailed prompt..."
-                className="flex-1"
+                type="number"
+                data-testid="input-recurring-minutes"
+                value={recurringMinutes}
+                onChange={(e) => setRecurringMinutes(e.target.value)}
+                placeholder=""
+                className="w-16 text-center"
                 disabled={isLoading}
+                min="1"
+                max="99"
               />
-              <Input
-                type="time"
-                data-testid="input-recurring-time"
-                value={recurringTime}
-                onChange={(e) => setRecurringTime(e.target.value)}
-                placeholder="Recurring Time"
-                className="w-32"
-                disabled={isLoading}
-              />
-              <Button variant="outline" className="flex-shrink-0">Upload Files</Button>
+              <span className="text-sm text-muted-foreground">min</span>
             </div>
-          )}
+          </div>
 
           <Button
             type="submit"
@@ -155,13 +150,6 @@ export function MainLayout() {
           data-testid="button-toggle-graph"
         >
           {isGraphCollapsed ? <PanelLeft className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
-        </Button>
-        <Button
-          variant="outline"
-          onClick={handleToggleMode}
-          data-testid="button-toggle-mode"
-        >
-          {isAdvancedMode ? "Simple Mode" : "Advanced Mode"}
         </Button>
       </header>
 
