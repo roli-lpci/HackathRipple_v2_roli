@@ -8,7 +8,8 @@ import { MissionStatusHeader } from './MissionStatusHeader';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Sparkles, Send, Loader2, PanelLeftClose, PanelLeft } from 'lucide-react';
+import { Sparkles, Send, Loader2, PanelLeftClose, PanelLeft, Clock, Play, Square } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import { useAgentStore } from '@/stores/agentStore';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { cn } from '@/lib/utils';
@@ -24,13 +25,14 @@ export function MainLayout() {
     executionLogs,
     selectedAgentId,
     isConsoleOpen,
+    schedule,
     updateAgent,
     selectAgent,
     toggleConsole,
     clearExecutionLogs,
   } = useAgentStore();
 
-  const { sendGodMode, sendChat, updateSteering, toggleTool, rerunAgent } = useWebSocket();
+  const { sendGodMode, sendChat, updateSteering, toggleTool, rerunAgent, scheduleTask, cancelSchedule } = useWebSocket();
 
   const [isLoading, setIsLoading] = useState(false);
   const [isCanvasExpanded, setIsCanvasExpanded] = useState(false);
@@ -40,8 +42,15 @@ export function MainLayout() {
   const [isGraphCollapsed, setIsGraphCollapsed] = useState(false);
   const [isTutorialOpen, setIsTutorialOpen] = useState(true); // State for tutorial dialog
   const [isAdvancedMode, setIsAdvancedMode] = useState(false); // State for mode selection
+  const [scheduleIntervalInput, setScheduleIntervalInput] = useState(1);
 
   const selectedAgent = agents.find(a => a.id === selectedAgentId);
+
+  const handleStartSchedule = () => {
+    if (commandInput.trim()) {
+      scheduleTask(commandInput.trim(), scheduleIntervalInput);
+    }
+  };
   const lastLog = executionLogs[executionLogs.length - 1];
 
   const handleGodModeSubmit = async (value: string) => {
@@ -149,6 +158,63 @@ export function MainLayout() {
           {isAdvancedMode ? "Simple Mode" : "Advanced Mode"}
         </Button>
       </header>
+
+      {isAdvancedMode && (
+        <div className="px-4 py-2 border-b bg-muted/30 flex items-center gap-3">
+          <div className="flex items-center gap-2 text-muted-foreground">
+            <Clock className="w-4 h-4" />
+            <span className="text-xs font-medium">Scheduled Execution</span>
+          </div>
+          <span className="text-sm text-muted-foreground">Run every</span>
+          <Input
+            data-testid="input-schedule-interval"
+            type="number"
+            min={0.5}
+            max={60}
+            step={0.5}
+            value={scheduleIntervalInput}
+            onChange={(e) => setScheduleIntervalInput(Math.max(0.5, parseFloat(e.target.value) || 1))}
+            disabled={isLoading || schedule.isActive}
+            className="w-20 h-8"
+          />
+          <span className="text-sm text-muted-foreground">minutes</span>
+          
+          {!schedule.isActive ? (
+            <Button
+              data-testid="button-start-schedule"
+              onClick={handleStartSchedule}
+              disabled={!commandInput.trim() || isLoading}
+              size="sm"
+              variant="outline"
+              className="gap-1"
+            >
+              <Play className="w-3 h-3" />
+              Start Schedule
+            </Button>
+          ) : (
+            <Button
+              data-testid="button-stop-schedule"
+              onClick={cancelSchedule}
+              size="sm"
+              variant="destructive"
+              className="gap-1"
+            >
+              <Square className="w-3 h-3" />
+              Stop
+            </Button>
+          )}
+          
+          {schedule.isActive && (
+            <div className="flex items-center gap-2 ml-auto">
+              <div className="w-2 h-2 bg-chart-1 rounded-full animate-pulse" />
+              <span className="text-xs">Active: every {schedule.intervalMinutes} min</span>
+              <Badge variant="secondary" className="text-xs">
+                Run #{schedule.runCount}
+              </Badge>
+            </div>
+          )}
+        </div>
+      )}
 
       <MissionStatusHeader
         agents={agents}

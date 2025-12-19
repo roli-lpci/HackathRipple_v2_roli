@@ -4,17 +4,32 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { ArrowRight, Sparkles, ChevronDown, ChevronUp, FileText, X } from 'lucide-react';
+import { ArrowRight, Sparkles, ChevronDown, ChevronUp, FileText, X, Clock, Play, Square } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
+import { Badge } from '@/components/ui/badge';
 
 interface GodModeInputProps {
   onSubmit: (value: string) => void;
+  onSchedule?: (goal: string, intervalMinutes: number) => void;
+  onCancelSchedule?: () => void;
   isLoading?: boolean;
+  isScheduleActive?: boolean;
+  scheduleInterval?: number;
+  runCount?: number;
 }
 
-export function GodModeInput({ onSubmit, isLoading = false }: GodModeInputProps) {
+export function GodModeInput({ 
+  onSubmit, 
+  onSchedule, 
+  onCancelSchedule,
+  isLoading = false,
+  isScheduleActive = false,
+  scheduleInterval = 0,
+  runCount = 0,
+}: GodModeInputProps) {
   const [value, setValue] = useState('');
   const [isAdvanced, setIsAdvanced] = useState(false);
+  const [intervalMinutes, setIntervalMinutes] = useState(1);
   const [contextFiles, setContextFiles] = useState<File[]>([]);
   const { toast } = useToast();
 
@@ -168,6 +183,82 @@ export function GodModeInput({ onSubmit, isLoading = false }: GodModeInputProps)
           <p className="text-xs text-muted-foreground">
             Upload company docs, requirements, or reference materials. Agents can access these via the read_file tool.
           </p>
+
+          <div className="border-t pt-3 mt-3">
+            <div className="flex items-center gap-2 mb-2">
+              <Clock className="w-3 h-3 text-muted-foreground" />
+              <Label className="text-xs text-muted-foreground">Scheduled Execution</Label>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Run every</span>
+              <Input
+                data-testid="input-schedule-interval"
+                type="number"
+                min={0.5}
+                max={60}
+                step={0.5}
+                value={intervalMinutes}
+                onChange={(e) => setIntervalMinutes(Math.max(0.5, parseFloat(e.target.value) || 1))}
+                disabled={isLoading || isScheduleActive}
+                className="w-20 h-9"
+              />
+              <span className="text-sm text-muted-foreground">minutes</span>
+              
+              {!isScheduleActive ? (
+                <Button
+                  data-testid="button-start-schedule"
+                  onClick={() => {
+                    if (value.trim() && onSchedule) {
+                      onSchedule(value.trim(), intervalMinutes);
+                    }
+                  }}
+                  disabled={!value.trim() || isLoading}
+                  size="sm"
+                  variant="outline"
+                  className="gap-1"
+                >
+                  <Play className="w-3 h-3" />
+                  Start
+                </Button>
+              ) : (
+                <Button
+                  data-testid="button-stop-schedule"
+                  onClick={onCancelSchedule}
+                  size="sm"
+                  variant="destructive"
+                  className="gap-1"
+                >
+                  <Square className="w-3 h-3" />
+                  Stop
+                </Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {isScheduleActive && (
+        <div className="px-4 py-2 border-t bg-chart-1/10 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2">
+            <div className="w-2 h-2 bg-chart-1 rounded-full animate-pulse" />
+            <span className="text-xs font-medium">Scheduled: every {scheduleInterval} min</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="text-xs">
+              Run #{runCount}
+            </Badge>
+            <Button
+              data-testid="button-cancel-schedule-bar"
+              onClick={onCancelSchedule}
+              size="sm"
+              variant="ghost"
+              className="h-6 text-xs"
+            >
+              <Square className="w-3 h-3 mr-1" />
+              Stop
+            </Button>
+          </div>
         </div>
       )}
     </div>

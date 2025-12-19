@@ -67,6 +67,13 @@ export interface SteeringProfile {
   enabledTools: string[];
 }
 
+export interface ScheduleState {
+  isActive: boolean;
+  goal: string;
+  intervalMinutes: number;
+  runCount: number;
+}
+
 interface AgentStore {
   agents: Agent[];
   tasks: Task[];
@@ -76,6 +83,7 @@ interface AgentStore {
   steeringProfiles: SteeringProfile[];
   selectedAgentId: string | null;
   isConsoleOpen: boolean;
+  schedule: ScheduleState;
   
   addAgent: (agent: Agent) => void;
   updateAgent: (id: string, updates: Partial<Agent>) => void;
@@ -98,6 +106,8 @@ interface AgentStore {
   
   toggleConsole: () => void;
   
+  updateSchedule: (schedule: Partial<ScheduleState>) => void;
+  
   reset: () => void;
 }
 
@@ -117,6 +127,7 @@ export const useAgentStore = create<AgentStore>((set) => ({
   steeringProfiles: defaultProfiles,
   selectedAgentId: null,
   isConsoleOpen: false,
+  schedule: { isActive: false, goal: '', intervalMinutes: 1, runCount: 0 },
   
   addAgent: (agent) => set((state) => ({ agents: [...state.agents, agent] })),
   updateAgent: (id, updates) => set((state) => ({
@@ -149,6 +160,10 @@ export const useAgentStore = create<AgentStore>((set) => ({
   
   toggleConsole: () => set((state) => ({ isConsoleOpen: !state.isConsoleOpen })),
   
+  updateSchedule: (schedule) => set((state) => ({
+    schedule: { ...state.schedule, ...schedule }
+  })),
+  
   reset: () => set({
     agents: [],
     tasks: [],
@@ -156,5 +171,6 @@ export const useAgentStore = create<AgentStore>((set) => ({
     messages: [],
     executionLogs: [],
     selectedAgentId: null,
+    schedule: { isActive: false, goal: '', intervalMinutes: 1, runCount: 0 },
   }),
 }));

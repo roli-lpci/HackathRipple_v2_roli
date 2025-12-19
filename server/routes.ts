@@ -13,6 +13,14 @@ import {
   type AgentDecision,
 } from "./agent-runtime";
 
+interface ScheduleConfig {
+  isActive: boolean;
+  goal: string;
+  intervalMinutes: number;
+  runCount: number;
+  intervalHandle: ReturnType<typeof setInterval> | null;
+}
+
 interface MissionState {
   agents: Map<string, Agent>;
   tasks: Map<string, Task>;
@@ -20,6 +28,8 @@ interface MissionState {
   logs: ExecutionLog[];
   context: string;
   taskAgentMap: Map<string, number>;
+  sessionMemory: string[];
+  schedule: ScheduleConfig;
 }
 
 const missionState: MissionState = {
@@ -29,6 +39,14 @@ const missionState: MissionState = {
   logs: [],
   context: '',
   taskAgentMap: new Map(),
+  sessionMemory: [],
+  schedule: {
+    isActive: false,
+    goal: '',
+    intervalMinutes: 1,
+    runCount: 0,
+    intervalHandle: null,
+  },
 };
 
 function broadcast(wss: WebSocketServer, type: string, payload: unknown) {
@@ -415,13 +433,164 @@ export async function registerRoutes(
             agent.status = 'complete';
             broadcast(wss, 'agent_update', agent);
           }
+        } else if (message.type === 'schedule_task') {
+          const { goal, intervalMinutes } = message.payload;
+          
+          if (missionState.schedule.intervalHandle) {
+            clearInterval(missionState.schedule.intervalHandle);
+          }
+          
+          missionState.schedule = {
+            isActive: true,
+            goal,
+            intervalMinutes,
+            runCount: 0,
+            intervalHandle: null,
+          };
+          
+          const runScheduledTask = async () => {
+            if (!missionState.schedule.isActive) return;
+            
+            missionState.schedule.runCount++;
+            const currentRun = missionState.schedule.runCount;
+            
+            broadcast(wss, 'schedule_update', {
+              isActive: true,
+              goal,
+              intervalMinutes,
+              runCount: currentRun,
+            });
+            
+            addLog(wss, {
+              agentId: 'system',
+              agentName: 'Scheduler',
+              type: 'action',
+              data: { action: 'scheduled_run', runNumber: currentRun, goal },
+            });
+            
+            const memoryContext = missionState.sessionMemory.length > 0
+              ? `\n\nPrevious run summaries (memory):\n${missionState.sessionMemory.slice(-5).join('\n---\n')}`
+              : '';
+            
+            const contextWithMemory = `${goal}${memoryContext}`;
+            missionState.context = contextWithMemory;
+            
+            const { agents: agentTemplates, tasks: taskTemplates } = await decomposeGoal(goal);
+            
+            const newAgents: Agent[] = [];
+            const newTasks: Task[] = [];
+            const agentIdMap = new Map<number, string>();
+            
+            agentTemplates.forEach((template, index) => {
+              const existingAgent = Array.from(missionState.agents.values()).find(a => a.name === template.name);
+              if (existingAgent) {
+                newAgents.push(existingAgent);
+                agentIdMap.set(index, existingAgent.id);
+              } else {
+                const agent: Agent = { ...template, id: randomUUID() };
+                missionState.agents.set(agent.id, agent);
+                newAgents.push(agent);
+                agentIdMap.set(index, agent.id);
+                broadcast(wss, 'agent', agent);
+              }
+            });
+            
+            taskTemplates.forEach((template, index) => {
+              const task: Task = {
+                ...template,
+                id: randomUUID(),
+                assignedAgentId: agentIdMap.get(index % newAgents.length) || newAgents[0]?.id || '',
+              };
+              missionState.tasks.set(task.id, task);
+              newTasks.push(task);
+              broadcast(wss, 'task', task);
+            });
+            
+            for (const task of newTasks) {
+              const agent = missionState.agents.get(task.assignedAgentId);
+              if (agent) {
+                agent.lastAppliedSteeringX = agent.steeringX;
+                agent.lastAppliedSteeringY = agent.steeringY;
+                broadcast(wss, 'agent_update', agent);
+                await runAgentLoop(wss, agent, task);
+              }
+            }
+            
+            const runSummary = `Run #${currentRun} at ${new Date().toLocaleTimeString()}: Completed ${newTasks.length} task(s). Outputs: ${newTasks.map(t => t.outputs.slice(-1)[0] || 'none').join('; ')}`;
+            missionState.sessionMemory.push(runSummary);
+            
+            addLog(wss, {
+              agentId: 'system',
+              agentName: 'Scheduler',
+              type: 'complete',
+              data: { runNumber: currentRun, summary: runSummary },
+            });
+          };
+          
+          await runScheduledTask();
+          
+          missionState.schedule.intervalHandle = setInterval(
+            runScheduledTask,
+            intervalMinutes * 60 * 1000
+          );
+          
+          broadcast(wss, 'schedule_update', {
+            isActive: true,
+            goal,
+            intervalMinutes,
+            runCount: missionState.schedule.runCount,
+          });
+          
+        } else if (message.type === 'cancel_schedule') {
+          if (missionState.schedule.intervalHandle) {
+            clearInterval(missionState.schedule.intervalHandle);
+          }
+          missionState.schedule = {
+            isActive: false,
+            goal: '',
+            intervalMinutes: 1,
+            runCount: 0,
+            intervalHandle: null,
+          };
+          
+          broadcast(wss, 'schedule_update', {
+            isActive: false,
+            goal: '',
+            intervalMinutes: 1,
+            runCount: 0,
+          });
+          
+          addLog(wss, {
+            agentId: 'system',
+            agentName: 'Scheduler',
+            type: 'action',
+            data: { action: 'schedule_cancelled' },
+          });
+          
         } else if (message.type === 'reset') {
+          if (missionState.schedule.intervalHandle) {
+            clearInterval(missionState.schedule.intervalHandle);
+          }
           missionState.agents.clear();
           missionState.tasks.clear();
           missionState.artifacts.clear();
           missionState.logs = [];
           missionState.context = '';
+          missionState.sessionMemory = [];
+          missionState.schedule = {
+            isActive: false,
+            goal: '',
+            intervalMinutes: 1,
+            runCount: 0,
+            intervalHandle: null,
+          };
           broadcast(wss, 'reset', {});
+          broadcast(wss, 'schedule_update', {
+            isActive: false,
+            goal: '',
+            intervalMinutes: 1,
+            runCount: 0,
+          });
         }
       } catch (error) {
         console.error('WebSocket message error:', error);

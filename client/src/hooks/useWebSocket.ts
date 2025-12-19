@@ -1,6 +1,6 @@
 import { useEffect, useRef, useCallback } from 'react';
 import { useAgentStore } from '@/stores/agentStore';
-import type { Agent, Artifact, ExecutionLog, Message } from '@/stores/agentStore';
+import type { Agent, Artifact, ExecutionLog, Message, ScheduleState } from '@/stores/agentStore';
 
 export function useWebSocket() {
   const wsRef = useRef<WebSocket | null>(null);
@@ -14,6 +14,7 @@ export function useWebSocket() {
     addArtifact,
     addMessage,
     addExecutionLog,
+    updateSchedule,
     reset,
   } = useAgentStore();
 
@@ -69,6 +70,9 @@ export function useWebSocket() {
           case 'reset':
             reset();
             break;
+          case 'schedule_update':
+            updateSchedule(payload as Partial<ScheduleState>);
+            break;
         }
       } catch (error) {
         console.error('WebSocket message parse error:', error);
@@ -83,7 +87,7 @@ export function useWebSocket() {
     ws.onerror = (error) => {
       console.error('WebSocket error:', error);
     };
-  }, [addAgent, updateAgent, addTask, updateTask, addArtifact, addMessage, addExecutionLog, reset]);
+  }, [addAgent, updateAgent, addTask, updateTask, addArtifact, addMessage, addExecutionLog, updateSchedule, reset]);
 
   useEffect(() => {
     connect();
@@ -125,6 +129,14 @@ export function useWebSocket() {
     sendMessage('rerun_agent', { agentId });
   }, [sendMessage]);
 
+  const scheduleTask = useCallback((goal: string, intervalMinutes: number) => {
+    sendMessage('schedule_task', { goal, intervalMinutes });
+  }, [sendMessage]);
+
+  const cancelSchedule = useCallback(() => {
+    sendMessage('cancel_schedule', {});
+  }, [sendMessage]);
+
   return {
     sendGodMode,
     sendChat,
@@ -132,6 +144,8 @@ export function useWebSocket() {
     toggleTool,
     resetMission,
     rerunAgent,
+    scheduleTask,
+    cancelSchedule,
     isConnected: wsRef.current?.readyState === WebSocket.OPEN,
   };
 }

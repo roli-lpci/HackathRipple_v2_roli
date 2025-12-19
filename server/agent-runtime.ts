@@ -13,6 +13,8 @@ export interface Agent {
   position: { x: number; y: number };
   steeringX: number;
   steeringY: number;
+  lastAppliedSteeringX?: number;
+  lastAppliedSteeringY?: number;
   tools: string[];
   enabledTools: string[];
   tokenCount: number;
