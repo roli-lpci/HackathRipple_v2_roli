@@ -16,3 +16,25 @@ export const insertUserSchema = createInsertSchema(users).pick({
 
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
+
+export interface Agent {
+  id: string;
+  name: string;
+  description: string;
+  status: 'idle' | 'working' | 'complete' | 'error';
+  tools: string[];
+  enabledTools?: string[];
+  steeringX: number;
+  steeringY: number;
+  lastAppliedSteeringX?: number;
+  lastAppliedSteeringY?: number;
+  tokenCount: number;
+  costSpent?: number;
+  messages?: Array<{ role: string; content: string }>;
+  axisLabels?: {
+    xMin: string;
+    xMax: string;
+    yMin: string;
+    yMax: string;
+  };
+}

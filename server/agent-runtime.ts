@@ -20,6 +20,13 @@ export interface Agent {
   tokenCount: number;
   costSpent: number;
   currentTaskId?: string;
+  axisLabels?: {
+    xMin: string;
+    xMax: string;
+    yMin: string;
+    yMax: string;
+  };
+  messages: string[];
 }
 
 export interface Task {
@@ -93,7 +100,7 @@ export async function executeToolMock(
   artifacts?: Map<string, Artifact>
 ): Promise<string> {
   await new Promise(r => setTimeout(r, 500 + Math.random() * 1000));
-  
+
   switch (toolName) {
     case 'web_search':
       return JSON.stringify({
@@ -153,7 +160,7 @@ export async function getAgentDecision(
 ): Promise<AgentDecision> {
   const enabledTools = agent.enabledTools || agent.tools;
   const availableTools = enabledTools.map(t => TOOL_DEFINITIONS[t as keyof typeof TOOL_DEFINITIONS]).filter(Boolean);
-  
+
   const steeringContext = `
 Steering parameters (0-1 scale):
 - Autonomy (X): ${agent.steeringX.toFixed(2)} (${agent.steeringX < 0.3 ? 'low - ask for guidance often' : agent.steeringX > 0.7 ? 'high - work independently' : 'medium - balance guidance and autonomy'})
@@ -162,7 +169,7 @@ Steering parameters (0-1 scale):
 
   // Special handling for coordinator agent
   const isCoordinator = agent.name === 'Coordinator';
-  
+
   const prompt = isCoordinator 
     ? `You are the Coordinator, the ONLY agent that handles user chat messages.
 
@@ -195,6 +202,11 @@ Success Criteria: ${task.successCriteria}
 Iteration: ${task.iterationCount + 1} of ${task.maxIterations}
 
 ${steeringContext}
+${agent.axisLabels ? `
+Axis Labels:
+- X-axis (Autonomy): Low (${agent.axisLabels.xMin}), High (${agent.axisLabels.xMax})
+- Y-axis (Speed vs Quality): Low (${agent.axisLabels.yMin}), High (${agent.axisLabels.yMax})
+` : ''}
 
 Available tools:
 ${availableTools.map(t => `- ${t.name}: ${t.description}`).join('\n')}
@@ -241,13 +253,13 @@ Important:
     if (!jsonMatch) {
       throw new Error('No JSON found in response');
     }
-    
+
     const promptTokens = Math.ceil(prompt.length / 4);
     const responseTokens = Math.ceil(text.length / 4);
     agent.tokenCount = (agent.tokenCount || 0) + promptTokens + responseTokens;
     const costPerToken = 0.000001;
     agent.costSpent = (agent.costSpent || 0) + (promptTokens + responseTokens) * costPerToken;
-    
+
     let decision: AgentDecision;
     try {
       decision = JSON.parse(jsonMatch[0]) as AgentDecision;
@@ -256,14 +268,14 @@ Important:
       // Fallback: try to extract action and create a safe response
       const actionMatch = jsonMatch[0].match(/"action"\s*:\s*"([^"]+)"/);
       const reasonMatch = jsonMatch[0].match(/"reason"\s*:\s*"([^"]+)"/);
-      
+
       decision = {
         action: 'complete',
         message: 'Research completed - check artifacts for detailed results',
         reason: reasonMatch ? reasonMatch[1] : 'Completed task with malformed output',
       };
     }
-    
+
     return decision;
   } catch (error) {
     console.error('Gemini API error:', error);
@@ -286,7 +298,17 @@ Create a plan with 1-3 specialized agents and their tasks. Respond with valid JS
     {
       "name": "AgentName",
       "description": "What this agent specializes in",
-      "tools": ["tool1", "tool2"]
+      "tools": ["tool1", "tool2"],
+      "initial_steering": {
+        "x": 0.5,
+        "y": 0.5
+      },
+      "axis_labels": {
+        "x_min": "Brief/Concise label for low X value",
+        "x_max": "Detailed/Verbose label for high X value",
+        "y_min": "Label representing low Y (e.g., Factual, Speed, etc.)",
+        "y_max": "Label representing high Y (e.g., Creative, Quality, etc.)"
+      }
     }
   ],
   "tasks": [
@@ -317,28 +339,35 @@ Keep it focused - maximum 3 agents, 1-2 tasks per agent. Match tools to agent pu
     if (!jsonMatch) {
       throw new Error('No JSON found in response');
     }
-    
+
     const plan = JSON.parse(jsonMatch[0]);
-    
-    const agents: Omit<Agent, 'id'>[] = plan.agents.map((a: { name: string; description: string; tools: string[] }, i: number) => {
-      const validTools = a.tools.filter((t: string) => ['web_search', 'analyze_data', 'code_writer'].includes(t));
+
+    const agents: Omit<Agent, 'id'>[] = plan.agents.map((agentDef: { name: string; description: string; tools: string[]; initial_steering?: { x: number; y: number }; axis_labels?: { x_min: string; x_max: string; y_min: string; y_max: string } }) => {
+      const validTools = agentDef.tools.filter((t: string) => ['web_search', 'analyze_data', 'code_writer'].includes(t));
       return {
-        name: a.name,
-        description: a.description,
-        status: 'idle' as AgentStatus,
-        position: { x: i * 150, y: 0 },
-        steeringX: 0.5,
-        steeringY: 0.5,
+        name: agentDef.name,
+        description: agentDef.description,
+        status: 'idle',
+        position: { x: 0, y: 0 }, // Position will be determined later based on agent order
+        steeringX: agentDef.initial_steering?.x ?? 0.5,
+        steeringY: agentDef.initial_steering?.y ?? 0.5,
         tools: validTools,
         enabledTools: validTools,
         tokenCount: 0,
         costSpent: 0,
+        messages: [],
+        axisLabels: agentDef.axis_labels ? {
+          xMin: agentDef.axis_labels.x_min || 'Concise',
+          xMax: agentDef.axis_labels.x_max || 'Detailed',
+          yMin: agentDef.axis_labels.y_min || 'Factual',
+          yMax: agentDef.axis_labels.y_max || 'Creative',
+        } : undefined,
       };
     });
 
     const tasks: Omit<Task, 'id' | 'assignedAgentId'>[] = plan.tasks.map((t: { goal: string; successCriteria: string; inputs: string[]; agentIndex: number }) => ({
       goal: t.goal,
-      status: 'pending' as TaskStatus,
+      status: 'pending',
       inputs: t.inputs || [],
       outputs: [],
       successCriteria: t.successCriteria,
@@ -346,9 +375,15 @@ Keep it focused - maximum 3 agents, 1-2 tasks per agent. Match tools to agent pu
       maxIterations: 5,
     }));
 
+    // Assign initial positions based on agent order
+    agents.forEach((agent, index) => {
+      agent.position = { x: index * 150, y: 0 };
+    });
+
     return { agents, tasks };
   } catch (error) {
     console.error('Goal decomposition error:', error);
+    // Fallback agent and task if decomposition fails
     return {
       agents: [{
         name: 'General Agent',
@@ -361,6 +396,13 @@ Keep it focused - maximum 3 agents, 1-2 tasks per agent. Match tools to agent pu
         enabledTools: ['web_search', 'analyze_data', 'code_writer'],
         tokenCount: 0,
         costSpent: 0,
+        messages: [],
+        axisLabels: {
+          xMin: 'Less Autonomous',
+          xMax: 'More Autonomous',
+          yMin: 'Prioritize Speed',
+          yMax: 'Prioritize Quality',
+        },
       }],
       tasks: [{
         goal: userGoal,
