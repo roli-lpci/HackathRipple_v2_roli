@@ -13,6 +13,7 @@ import { useAgentStore } from '@/stores/agentStore';
 import { useWebSocket } from '@/hooks/useWebSocket';
 import { cn } from '@/lib/utils';
 import type { Artifact } from '@/stores/agentStore';
+import { TutorialDialog } from './TutorialDialog';
 
 export function MainLayout() {
   const {
@@ -37,6 +38,8 @@ export function MainLayout() {
   const [commandInput, setCommandInput] = useState('');
   const [currentGoal, setCurrentGoal] = useState('');
   const [isGraphCollapsed, setIsGraphCollapsed] = useState(false);
+  const [isTutorialOpen, setIsTutorialOpen] = useState(true); // State for tutorial dialog
+  const [isAdvancedMode, setIsAdvancedMode] = useState(false); // State for mode selection
 
   const selectedAgent = agents.find(a => a.id === selectedAgentId);
   const lastLog = executionLogs[executionLogs.length - 1];
@@ -75,10 +78,20 @@ export function MainLayout() {
     setViewingArtifact(artifact);
   };
 
+  const handleCloseTutorial = () => {
+    setIsTutorialOpen(false);
+  };
+
+  const handleToggleMode = () => {
+    setIsAdvancedMode(!isAdvancedMode);
+  };
+
   return (
     <div className="flex flex-col h-screen bg-background">
+      <TutorialDialog isOpen={isTutorialOpen} onClose={handleCloseTutorial} />
+
       <header className="flex items-center gap-3 px-4 py-3 border-b bg-card/50">
-        <form 
+        <form
           onSubmit={(e) => { e.preventDefault(); handleGodModeSubmit(commandInput); }}
           className="flex-1 flex gap-2"
         >
@@ -86,22 +99,38 @@ export function MainLayout() {
             <Sparkles className="w-5 h-5" />
             <span className="font-semibold text-sm hidden sm:inline">Agent Synapse</span>
           </div>
-          <Input
-            data-testid="input-god-mode"
-            value={commandInput}
-            onChange={(e) => setCommandInput(e.target.value)}
-            placeholder="Dream your agent team... (e.g., 'Research AI trends and write a report')"
-            className="flex-1 max-w-xl"
-            disabled={isLoading}
-          />
-          <Button 
-            type="submit" 
+
+          {!isAdvancedMode ? (
+            <Input
+              data-testid="input-god-mode"
+              value={commandInput}
+              onChange={(e) => setCommandInput(e.target.value)}
+              placeholder="Dream your agent team... (e.g., 'Research AI trends and write a report')"
+              className="flex-1 max-w-xl"
+              disabled={isLoading}
+            />
+          ) : (
+            <div className="flex-1 flex items-center gap-2">
+              <Input
+                data-testid="input-god-mode-advanced"
+                value={commandInput}
+                onChange={(e) => setCommandInput(e.target.value)}
+                placeholder="Detailed prompt..."
+                className="flex-1"
+                disabled={isLoading}
+              />
+              <Button variant="outline" className="flex-shrink-0">Upload Files</Button>
+            </div>
+          )}
+
+          <Button
+            type="submit"
             disabled={isLoading || !commandInput.trim()}
             data-testid="button-god-mode-submit"
             className="gap-2"
           >
             {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
-            <span className="hidden sm:inline">Spawn</span>
+            <span className="hidden sm:inline">{isAdvancedMode ? "Run" : "Spawn"}</span>
           </Button>
         </form>
         <Button
@@ -112,6 +141,13 @@ export function MainLayout() {
         >
           {isGraphCollapsed ? <PanelLeft className="w-4 h-4" /> : <PanelLeftClose className="w-4 h-4" />}
         </Button>
+        <Button
+          variant="outline"
+          onClick={handleToggleMode}
+          data-testid="button-toggle-mode"
+        >
+          {isAdvancedMode ? "Simple Mode" : "Advanced Mode"}
+        </Button>
       </header>
 
       <MissionStatusHeader
@@ -120,7 +156,7 @@ export function MainLayout() {
         lastLog={lastLog}
         currentGoal={currentGoal}
       />
-      
+
       <div className="flex-1 flex overflow-hidden">
         {!isGraphCollapsed && (
           <div className="flex flex-col border-r w-[50%]">
@@ -136,7 +172,7 @@ export function MainLayout() {
                 onToggleExpand={() => setIsCanvasExpanded(!isCanvasExpanded)}
               />
             </div>
-            
+
             {selectedAgent && (
               <div className="border-t max-h-[40%] overflow-hidden">
                 <ScrollArea className="h-full">
