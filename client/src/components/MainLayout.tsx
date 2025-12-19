@@ -30,7 +30,11 @@ export function MainLayout() {
     clearExecutionLogs,
   } = useAgentStore();
 
-  const { sendGodMode, sendChat, updateSteering, toggleTool, rerunAgent } = useWebSocket();
+  const { sendGodMode, sendChat, updateSteering, toggleTool, rerunAgent: wsRerunAgent } = useWebSocket();
+  
+  const handleRerunAgent = (agentId: string, maxDurationSeconds?: number, runIntervalMinutes?: number) => {
+    wsRerunAgent(agentId, maxDurationSeconds, runIntervalMinutes);
+  };
 
   const [isLoading, setIsLoading] = useState(false);
   const [isCanvasExpanded, setIsCanvasExpanded] = useState(false);
@@ -167,7 +171,7 @@ export function MainLayout() {
                 selectedAgentId={selectedAgentId}
                 onSelectAgent={selectAgent}
                 onSelectArtifact={handleViewArtifact}
-                onRerunAgent={rerunAgent}
+                onRerunAgent={(agentId) => handleRerunAgent(agentId)}
                 isExpanded={isCanvasExpanded}
                 onToggleExpand={() => setIsCanvasExpanded(!isCanvasExpanded)}
               />
@@ -179,7 +183,7 @@ export function MainLayout() {
                   <SteeringControls
                     agent={selectedAgent}
                     onSteeringChange={handleSteeringChange}
-                    onRerun={rerunAgent}
+                    onRerun={handleRerunAgent}
                     onToolToggle={handleToolToggle}
                   />
                 </ScrollArea>

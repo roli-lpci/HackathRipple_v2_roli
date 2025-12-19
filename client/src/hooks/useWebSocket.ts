@@ -5,7 +5,7 @@ import type { Agent, Artifact, ExecutionLog, Message } from '@/stores/agentStore
 export function useWebSocket() {
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimeoutRef = useRef<ReturnType<typeof setTimeout>>();
-  
+
   const {
     addAgent,
     updateAgent,
@@ -121,8 +121,15 @@ export function useWebSocket() {
     sendMessage('tool_toggle', { agentId, tool, enabled });
   }, [sendMessage]);
 
-  const rerunAgent = useCallback((agentId: string) => {
-    sendMessage('rerun_agent', { agentId });
+  const rerunAgent = useCallback((agentId: string, maxDurationSeconds?: number, runIntervalMinutes?: number) => {
+    if (wsRef.current?.readyState === WebSocket.OPEN) {
+      wsRef.current.send(JSON.stringify({
+        type: 'rerun_agent',
+        agentId,
+        maxDurationSeconds,
+        runIntervalMinutes,
+      }));
+    }
   }, [sendMessage]);
 
   return {
