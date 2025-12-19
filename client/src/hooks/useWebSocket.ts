@@ -101,8 +101,8 @@ export function useWebSocket() {
     }
   }, []);
 
-  const sendGodMode = useCallback((goal: string) => {
-    sendMessage('god_mode', { goal });
+  const sendGodMode = useCallback((goal: string, maxDurationSeconds?: number, runIntervalMinutes?: number) => {
+    sendMessage('god_mode', { goal, maxDurationSeconds, runIntervalMinutes });
   }, [sendMessage]);
 
   const sendChat = useCallback((content: string) => {
@@ -121,12 +121,8 @@ export function useWebSocket() {
     sendMessage('tool_toggle', { agentId, tool, enabled });
   }, [sendMessage]);
 
-  const rerunAgent = useCallback((agentId: string, maxDurationSeconds?: number, runIntervalMinutes?: number) => {
-    sendMessage('rerun_agent', {
-      agentId,
-      maxDurationSeconds,
-      runIntervalMinutes,
-    });
+  const rerunAgent = useCallback((agentId: string) => {
+    sendMessage('rerun_agent', { agentId });
   }, [sendMessage]);
 
   return {

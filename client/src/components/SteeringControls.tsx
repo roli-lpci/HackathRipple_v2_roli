@@ -2,8 +2,6 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Switch } from '@/components/ui/switch';
-import { Slider } from '@/components/ui/slider';
-import { Label } from '@/components/ui/label';
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip';
 import { XYPad } from './XYPad';
 import { Search, Code, Database, Globe, Fuel, DollarSign, RotateCcw, Loader2, Bookmark, Save, Sparkles, Eye, EyeOff } from 'lucide-react';
@@ -16,7 +14,7 @@ interface SteeringControlsProps {
   agent: Agent;
   onSteeringChange: (x: number, y: number) => void;
   onToolToggle?: (tool: string, enabled: boolean) => void;
-  onRerun?: (agentId: string, maxDurationSeconds?: number, runIntervalMinutes?: number) => void;
+  onRerun?: (agentId: string) => void;
   updateSteering?: (agentId: string, x: number, y: number) => void;
 }
 
@@ -29,8 +27,6 @@ const toolIcons: Record<string, typeof Search> = {
 export function SteeringControls({ agent, onSteeringChange, onToolToggle, onRerun, updateSteering }: SteeringControlsProps) {
   const { steeringProfiles, addSteeringProfile } = useAgentStore();
   const [savingProfile, setSavingProfile] = useState(false);
-  const [maxDuration, setMaxDuration] = useState(15);
-  const [runInterval, setRunInterval] = useState(0);
   const enabledTools = agent.enabledTools || agent.tools;
   const maxTokens = 128000;
   const contextUsage = Math.min(100, Math.round((agent.tokenCount / maxTokens) * 100));
@@ -189,7 +185,7 @@ export function SteeringControls({ agent, onSteeringChange, onToolToggle, onReru
             </Button>
             <Button
               data-testid="button-rerun-agent"
-              onClick={() => onRerun?.(agent.id, maxDuration * 60, runInterval > 0 ? runInterval : undefined)}
+              onClick={() => onRerun?.(agent.id)}
               disabled={agent.status === 'working'}
               className="flex-1 gap-2"
               variant={agent.status === 'complete' ? 'default' : 'secondary'}
@@ -233,59 +229,6 @@ export function SteeringControls({ agent, onSteeringChange, onToolToggle, onReru
               )}
             </CollapsibleContent>
           </Collapsible>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm">Time Constraints</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div>
-            <div className="flex justify-between mb-2">
-              <Label className="text-xs">Max Duration (minutes)</Label>
-              <span className="text-xs font-mono text-muted-foreground">{maxDuration} min</span>
-            </div>
-            <Slider 
-              data-testid="slider-duration" 
-              value={[maxDuration]} 
-              onValueChange={(value) => setMaxDuration(value[0])}
-              max={60} 
-              step={1} 
-            />
-            <p className="text-xs text-muted-foreground mt-1">Agent will stop after this time</p>
-          </div>
-          <div>
-            <div className="flex justify-between items-center mb-2">
-              <Label className="text-xs">Recurring Task</Label>
-              <div className="flex items-center gap-2">
-                <Switch
-                  data-testid="switch-recurring"
-                  checked={runInterval > 0}
-                  onCheckedChange={(checked) => setRunInterval(checked ? 5 : 0)}
-                />
-                <span className={cn(
-                  "text-xs font-mono",
-                  runInterval > 0 ? "text-primary" : "text-muted-foreground"
-                )}>
-                  {runInterval > 0 ? `Every ${runInterval} min` : 'Off'}
-                </span>
-              </div>
-            </div>
-            {runInterval > 0 && (
-              <>
-                <Slider 
-                  data-testid="slider-interval" 
-                  value={[runInterval]} 
-                  onValueChange={(value) => setRunInterval(value[0])}
-                  min={1}
-                  max={60} 
-                  step={1} 
-                />
-                <p className="text-xs text-muted-foreground mt-1">Task will run automatically at this interval</p>
-              </>
-            )}
-          </div>
         </CardContent>
       </Card>
 
